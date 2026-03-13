@@ -159,12 +159,14 @@ def create_lead():
     for f in ['name','phone','source']:
         if not d.get(f): return jsonify({'error':f+' is required'}), 400
     conn = get_db()
-    conn.execute("""INSERT INTO leads (name,phone,email,location,type,source,bill,phase,roof,subsidy,kw,temp,telecaller,notes,follow_up_date,probability)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+    status = d.get('status', 'New Lead')
+    conn.execute("""INSERT INTO leads (name,phone,email,location,type,source,bill,phase,roof,subsidy,kw,temp,telecaller,notes,follow_up_date,probability,status,survey_date,survey_time,survey_eng)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (d['name'],d['phone'],d.get('email',''),d.get('location',''),d.get('type','Residential'),
          d['source'],d.get('bill',''),d.get('phase',''),d.get('roof',''),d.get('subsidy','Unknown'),
          d.get('kw',''),d.get('temp','Warm'),d.get('telecaller',''),d.get('notes',''),
-         d.get('follow_up_date',''),20))
+         d.get('follow_up_date',''),20,status,
+         d.get('survey_date',''),d.get('survey_time',''),d.get('survey_eng','')))
     lid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     conn.commit()
     lead = row(conn.execute("SELECT * FROM leads WHERE id=?", (lid,)).fetchone())
@@ -187,7 +189,7 @@ def get_lead(lid):
 @require_auth
 def update_lead(lid):
     d = request.json or {}
-    allowed = ['name','phone','email','location','type','source','bill','phase','roof','subsidy','kw','status','temp','telecaller','notes','follow_up_date','quoted_amount','probability']
+    allowed = ['name','phone','email','location','type','source','bill','phase','roof','subsidy','kw','status','temp','telecaller','notes','follow_up_date','quoted_amount','probability','survey_date','survey_time','survey_eng']
     sets=[]; params=[]
     for k in allowed:
         if k in d: sets.append(f"{k}=?"); params.append(d[k])
