@@ -55,6 +55,9 @@ def init_db():
                 notes TEXT DEFAULT '',
                 follow_up_date TEXT DEFAULT '',
                 quoted_amount TEXT DEFAULT '',
+                survey_date TEXT DEFAULT '',
+                survey_time TEXT DEFAULT '',
+                survey_eng TEXT DEFAULT '',
                 created_at TEXT DEFAULT (datetime('now')),
                 updated_at TEXT DEFAULT (datetime('now'))
             );
@@ -138,6 +141,12 @@ def init_db():
             conn.commit()
             if c.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
                 _seed(conn, c)
+            # Migrations — safely add new columns to existing databases
+            existing_cols = [row[1] for row in c.execute("PRAGMA table_info(leads)").fetchall()]
+            for col in ['survey_date', 'survey_time', 'survey_eng']:
+                if col not in existing_cols:
+                    c.execute(f"ALTER TABLE leads ADD COLUMN {col} TEXT DEFAULT ''")
+            conn.commit()
             conn.close()
             print(f"DB ready at {DB_PATH}")
         finally:
