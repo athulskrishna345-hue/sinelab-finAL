@@ -2303,6 +2303,10 @@ function openLeadPanel(l) {
     '<div class="ps-row"><span class="ps-key">System Est.</span><span class="ps-val">'+(l.kw?h(l.kw)+' kWp':'—')+'</span></div>'+
     '<div class="ps-row"><span class="ps-key">Subsidy</span><span class="ps-val">'+(h(l.subsidy)||'—')+'</span></div>'+
     '<div class="ps-row"><span class="ps-key">Probability</span><span class="ps-val">'+(l.probability||'—')+'%</span></div></div>'+
+    (l.survey_date ? '<div class="panel-section" style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.2);border-radius:10px;padding:12px 14px"><div class="ps-label" style="color:var(--sun)">📅 Site Survey Scheduled</div>'+
+    '<div class="ps-row"><span class="ps-key">Date</span><span class="ps-val" style="color:var(--sun);font-weight:600">'+h(l.survey_date)+'</span></div>'+
+    '<div class="ps-row"><span class="ps-key">Time</span><span class="ps-val">'+h(l.survey_time||'10:00')+'</span></div>'+
+    '<div class="ps-row"><span class="ps-key">Engineer</span><span class="ps-val">'+(h(l.survey_eng)||'Unassigned')+'</span></div></div>' : '')+
     '<div class="panel-section"><div class="ps-label">Update Stage</div>'+
     '<div class="pf-group"><select class="pf-select" id="pp-status" onchange="updateLeadStatus(\''+l.id+'\',this.value)"><option value="">Move to stage...</option>'+stageOpts+'</select></div>'+
     '<div class="pf-group"><label class="pf-label">Follow-up Note</label><textarea class="pf-textarea" id="pp-note" placeholder="Add a note...">'+h(l.notes||'')+'</textarea></div>'+
@@ -2492,6 +2496,7 @@ function closeModal() {
 }
 
 function openNewLeadModal() {
+  var today = new Date().toISOString().slice(0,10);
   openModal('Create New Lead',
     '<div class="sla-note">⏱ SLA: Enter lead within 15 minutes of first contact</div>'+
     '<div class="form-grid">'+
@@ -2507,6 +2512,14 @@ function openNewLeadModal() {
     '<div class="form-group"><label class="f-label">Subsidy?</label><select class="f-select" id="nl-subsidy"><option>Yes</option><option>No</option><option>Unknown</option></select></div>'+
     '<div class="form-group"><label class="f-label">Interest Level</label><select class="f-select" id="nl-temp"><option>Hot</option><option>Warm</option><option>Cold</option></select></div>'+
     '<div class="form-group"><label class="f-label">Est. System (kWp)</label><input class="f-input" id="nl-kw" placeholder="e.g. 5"></div>'+
+    '<div class="form-group span2" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px">'+
+      '<label class="f-label" style="color:var(--sun);font-size:13px;margin-bottom:10px;display:block">📅 Schedule Site Survey <span style="font-size:11px;color:var(--text-dim);font-weight:400">(optional — set now or later)</span></label>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+        '<div><label class="f-label">Survey Date</label><input class="f-input" id="nl-survey-date" type="date" min="'+today+'"></div>'+
+        '<div><label class="f-label">Survey Time</label><input class="f-input" id="nl-survey-time" type="time" value="10:00"></div>'+
+      '</div>'+
+      '<div style="margin-top:8px"><label class="f-label">Assign Engineer / Surveyor</label><select class="f-select" id="nl-survey-eng"><option value="">Unassigned</option><option>Engineer1</option><option>Engineer2</option><option>Engineer3</option></select></div>'+
+    '</div>'+
     '<div class="form-group span2"><label class="f-label">Notes</label><textarea class="f-textarea" id="nl-notes" placeholder="Any additional info..."></textarea></div>'+
     '</div>'+
     '<div class="form-actions"><button class="btn-outline" onclick="closeModal()">Cancel</button><button class="btn-primary" onclick="createLead()">✓ Create Lead</button></div>');
@@ -2519,18 +2532,26 @@ async function createLead() {
   if (!name)   { showToast('Customer name is required','error'); return; }
   if (!phone)  { showToast('Phone number is required','error'); return; }
   if (!source) { showToast('Lead source is required','error'); return; }
+  const surveyDate = document.getElementById('nl-survey-date').value || '';
+  const surveyTime = document.getElementById('nl-survey-time').value || '';
+  const surveyEng  = document.getElementById('nl-survey-eng').value || '';
   const payload = {
     name, phone, source,
-    location:   document.getElementById('nl-loc').value||'',
-    type:       document.getElementById('nl-type').value,
-    bill:       document.getElementById('nl-bill').value,
-    phase:      document.getElementById('nl-phase').value,
-    roof:       document.getElementById('nl-roof').value,
-    subsidy:    document.getElementById('nl-subsidy').value,
-    temp:       document.getElementById('nl-temp').value,
-    kw:         document.getElementById('nl-kw').value||'',
-    telecaller: document.getElementById('nl-tc').value,
-    notes:      document.getElementById('nl-notes').value,
+    location:    document.getElementById('nl-loc').value||'',
+    type:        document.getElementById('nl-type').value,
+    bill:        document.getElementById('nl-bill').value,
+    phase:       document.getElementById('nl-phase').value,
+    roof:        document.getElementById('nl-roof').value,
+    subsidy:     document.getElementById('nl-subsidy').value,
+    temp:        document.getElementById('nl-temp').value,
+    kw:          document.getElementById('nl-kw').value||'',
+    telecaller:  document.getElementById('nl-tc').value,
+    notes:       document.getElementById('nl-notes').value,
+    survey_date: surveyDate,
+    survey_time: surveyTime,
+    survey_eng:  surveyEng,
+    status:      surveyDate ? 'Site Survey Scheduled' : 'New Lead',
+    follow_up_date: surveyDate,
   };
   const data = await apiPost('/api/leads', payload);
   if (!data || data.error) { showToast(data?.error||'Error creating lead','error'); return; }
@@ -2617,17 +2638,74 @@ document.addEventListener('click', function(e) {
 function toggleNotifs() { document.getElementById('notif-panel').classList.toggle('show'); }
 
 async function buildNotifs() {
-  const [tickData, leadData] = await Promise.all([apiGet('/api/tickets?tab=open'), apiGet('/api/leads?status=New Lead')]);
+  const [tickData, leadData, allLeads] = await Promise.all([
+    apiGet('/api/tickets?tab=open'),
+    apiGet('/api/leads?status=New Lead'),
+    apiGet('/api/leads')
+  ]);
   var items = [];
+
+  // ── 24hr Site Survey Reminders ──────────────────────────────
+  var now = new Date();
+  if (allLeads) {
+    (allLeads.leads||[]).forEach(function(l) {
+      if (!l.survey_date) return;
+      var surveyDT = new Date(l.survey_date + 'T' + (l.survey_time || '10:00'));
+      var diffHrs = (surveyDT - now) / (1000 * 60 * 60);
+      if (diffHrs > 0 && diffHrs <= 24) {
+        var timeStr = l.survey_time ? l.survey_time : '10:00';
+        var label = diffHrs < 1
+          ? Math.round(diffHrs * 60) + ' min'
+          : Math.round(diffHrs) + ' hr';
+        items.push({
+          icon: '🔔',
+          urgent: true,
+          text: '<strong>Site Survey in '+label+'!</strong><br>'+h(l.name)+' · '+h(l.location)+'<br><span style="color:var(--sun)">📅 '+h(l.survey_date)+' at '+timeStr+(l.survey_eng?' · 👷 '+h(l.survey_eng):'')+'</span>',
+          time: l.survey_date
+        });
+      } else if (diffHrs > 24 && diffHrs <= 48) {
+        items.push({
+          icon: '📅',
+          urgent: false,
+          text: '<strong>Survey tomorrow</strong> — '+h(l.name)+'<br>'+h(l.survey_date)+' at '+(l.survey_time||'10:00')+(l.survey_eng?' · '+h(l.survey_eng):''),
+          time: l.survey_date
+        });
+      }
+    });
+  }
+
+  // ── High priority tickets ───────────────────────────────────
   if (tickData) {
-    (tickData.tickets||[]).filter(t=>t.priority==='high').forEach(function(t){ items.push({icon:'🔴',text:'<strong>'+h(t.id)+'</strong> — High priority: '+h(t.type),time:(t.created_at||'').slice(0,10)}); });
+    (tickData.tickets||[]).filter(t=>t.priority==='high').forEach(function(t){
+      items.push({icon:'🔴', urgent:false, text:'<strong>'+h(t.id)+'</strong> — High priority: '+h(t.type), time:(t.created_at||'').slice(0,10)});
+    });
   }
+
+  // ── New leads pending ───────────────────────────────────────
   if (leadData) {
-    (leadData.leads||[]).slice(0,3).forEach(function(l){ items.push({icon:'🟡',text:'<strong>'+h(l.name)+'</strong> — New lead pending',time:(l.created_at||'').slice(0,10)}); });
+    (leadData.leads||[]).slice(0,3).forEach(function(l){
+      items.push({icon:'🟡', urgent:false, text:'<strong>'+h(l.name)+'</strong> — New lead pending', time:(l.created_at||'').slice(0,10)});
+    });
   }
+
+  // Sort urgent first
+  items.sort(function(a,b){ return (b.urgent?1:0)-(a.urgent?1:0); });
+
+  var dot = document.getElementById('notif-dot');
+  if (dot) dot.classList.toggle('show', items.length > 0);
+
   document.getElementById('notif-list').innerHTML = !items.length
     ? '<div style="padding:16px;color:var(--text-dim);font-size:13px">No notifications</div>'
-    : items.map(function(i){ return '<div class="notif-item"><div class="notif-icon">'+i.icon+'</div><div><div class="notif-text">'+i.text+'</div><div class="notif-time">'+h(i.time)+'</div></div></div>'; }).join('');
+    : items.map(function(i){
+        return '<div class="notif-item" style="'+(i.urgent?'border-left:3px solid var(--sun);padding-left:12px':'')+'">'+
+          '<div class="notif-icon">'+i.icon+'</div>'+
+          '<div><div class="notif-text">'+i.text+'</div>'+
+          '<div class="notif-time">'+h(i.time)+'</div></div></div>';
+      }).join('');
+
+  // Auto-refresh every 5 minutes
+  clearTimeout(window._notifTimer);
+  window._notifTimer = setTimeout(buildNotifs, 5 * 60 * 1000);
 }
 
 function openSettings() { showToast('Settings — coming soon','info'); }
