@@ -1499,6 +1499,7 @@ body {
         </div>
         <div class="toolbar-right">
           <span class="result-count" id="proj-count">0 projects</span>
+          <button class="btn-outline" id="proj-delete-btn" onclick="massDeleteProjects()" style="display:none;color:var(--red);border-color:rgba(255,85,114,0.3)">🗑 Delete Selected</button>
           <button class="btn-primary" onclick="alert('Convert a confirmed lead to project')">+ New Project</button>
         </div>
       </div>
@@ -1506,6 +1507,7 @@ body {
         <table class="data-table">
           <thead>
             <tr>
+              <th style="width:36px"><input type="checkbox" id="select-all-projects" onchange="toggleSelectAllProjects(this)" style="cursor:pointer;accent-color:var(--sun)"></th>
               <th>Customer / Site</th><th>Capacity</th><th>Stage</th>
               <th>Start Date</th><th>Progress</th><th>Payment</th><th>Engineer</th><th></th>
             </tr>
@@ -1525,6 +1527,7 @@ body {
           <button class="tab" onclick="setSvcTab('resolved',this)">Resolved</button>
         </div>
         <div class="toolbar-right">
+          <button class="btn-outline" id="ticket-delete-btn" onclick="massDeleteTickets()" style="display:none;color:var(--red);border-color:rgba(255,85,114,0.3)">🗑 Delete Selected</button>
           <select class="filter-sel" id="fs-priority" onchange="renderTickets()">
             <option value="">All Priorities</option>
             <option>high</option><option>medium</option><option>low</option>
@@ -1947,6 +1950,60 @@ async function massDeleteLeads() {
   renderLeads();
 }
 
+// ---- PROJECTS SELECT/DELETE ----
+function toggleSelectAllProjects(cb) {
+  if (!CURRENT_USER || CURRENT_USER.role !== 'admin') return;
+  document.querySelectorAll('.proj-checkbox').forEach(function(box){ box.checked = cb.checked; });
+  updateProjDeleteBtn();
+}
+function updateProjDeleteBtn() {
+  if (!CURRENT_USER || CURRENT_USER.role !== 'admin') return;
+  var checked = document.querySelectorAll('.proj-checkbox:checked').length;
+  var btn = document.getElementById('proj-delete-btn');
+  var total = document.querySelectorAll('.proj-checkbox').length;
+  var sa = document.getElementById('select-all-projects');
+  if (btn) { btn.style.display = checked > 0 ? 'inline-flex' : 'none'; if (checked>0) btn.textContent = '🗑 Delete ('+checked+')'; }
+  if (sa) { sa.indeterminate = checked > 0 && checked < total; sa.checked = total > 0 && checked === total; }
+}
+async function massDeleteProjects() {
+  var ids = Array.from(document.querySelectorAll('.proj-checkbox:checked')).map(function(cb){ return cb.dataset.id; });
+  if (!ids.length) return;
+  if (!confirm('Delete ' + ids.length + ' project(s)? This cannot be undone.')) return;
+  var failed = 0;
+  for (var i = 0; i < ids.length; i++) {
+    var result = await apiDelete('/api/projects/' + ids[i]);
+    if (!result || result.error) failed++;
+  }
+  showToast((ids.length - failed) + ' projects deleted' + (failed ? ', '+failed+' failed' : ''), failed ? 'error' : 'success');
+  var btn = document.getElementById('proj-delete-btn');
+  if (btn) btn.style.display = 'none';
+  var sa = document.getElementById('select-all-projects');
+  if (sa) sa.checked = false;
+  renderProjects();
+}
+
+// ---- TICKETS SELECT/DELETE ----
+function updateTicketDeleteBtn() {
+  if (!CURRENT_USER || CURRENT_USER.role !== 'admin') return;
+  var checked = document.querySelectorAll('.ticket-checkbox:checked').length;
+  var btn = document.getElementById('ticket-delete-btn');
+  if (btn) { btn.style.display = checked > 0 ? 'inline-flex' : 'none'; if (checked>0) btn.textContent = '🗑 Delete ('+checked+')'; }
+}
+async function massDeleteTickets() {
+  var ids = Array.from(document.querySelectorAll('.ticket-checkbox:checked')).map(function(cb){ return cb.dataset.id; });
+  if (!ids.length) return;
+  if (!confirm('Delete ' + ids.length + ' ticket(s)? This cannot be undone.')) return;
+  var failed = 0;
+  for (var i = 0; i < ids.length; i++) {
+    var result = await apiDelete('/api/tickets/' + ids[i]);
+    if (!result || result.error) failed++;
+  }
+  showToast((ids.length - failed) + ' tickets deleted' + (failed ? ', '+failed+' failed' : ''), failed ? 'error' : 'success');
+  var btn = document.getElementById('ticket-delete-btn');
+  if (btn) btn.style.display = 'none';
+  renderTickets();
+}
+
 async function exportLeads() {
   const data = await apiGet('/api/leads');
   if (!data) return;
@@ -2086,10 +2143,24 @@ async function renderProjects() {
     document.getElementById('projects-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-dim)">No projects found</td></tr>';
     return;
   }
+  var isAdmin = CURRENT_USER && CURRENT_USER.role === 'admin';
+  var selectAllProjTh = document.getElementById('select-all-projects');
+  if (selectAllProjTh) selectAllProjTh.closest('th').style.display = isAdmin ? '' : 'none';
+  var projDelBtn = document.getElementById('proj-delete-btn');
+  if (projDelBtn && !isAdmin) projDelBtn.style.display = 'none';
+
   document.getElementById('projects-tbody').innerHTML = DB.projects.map(function(p){
     var pct = p.progress || 0;
     var pc = pct>=80?'prog-green':pct>=40?'prog-yellow':'prog-blue';
-    return '<tr data-id="'+p.id+'" onclick="openById(\'project\',this)"><td><div class="td-name">'+h(p.name)+'</div><div class="td-sub">'+h(p.location)+'</div></td><td>'+h(p.kw)+' kWp</td><td>'+chip(p.status)+'</td><td>'+(p.start_date||'').slice(0,10)+'</td><td><div class="prog-wrap"><div style="font-size:11px;color:var(--text-dim)">'+pct+'%</div><div class="prog-bar"><div class="prog-fill '+pc+'" style="width:'+pct+'%"></div></div></div></td><td>'+chip(p.payment)+'</td><td>'+h(p.engineer)+'</td><td><button class="btn-sm ghost" onclick="event.stopPropagation();openById(\'project\',this.closest(\'tr\'))">View</button></td></tr>';
+    return '<tr data-id="'+p.id+'" onclick="openById(\'project\',this)">'+
+      (isAdmin ? '<td onclick="event.stopPropagation()"><input type="checkbox" class="proj-checkbox" data-id="'+p.id+'" onchange="updateProjDeleteBtn()" style="cursor:pointer;accent-color:var(--sun)"></td>' : '<td style="display:none"></td>')+
+      '<td><div class="td-name">'+h(p.name)+'</div><div class="td-sub">'+h(p.location)+'</div></td>'+
+      '<td>'+h(p.kw)+' kWp</td><td>'+chip(p.status)+'</td>'+
+      '<td>'+(p.start_date||'').slice(0,10)+'</td>'+
+      '<td><div class="prog-wrap"><div style="font-size:11px;color:var(--text-dim)">'+pct+'%</div><div class="prog-bar"><div class="prog-fill '+pc+'" style="width:'+pct+'%"></div></div></div></td>'+
+      '<td>'+chip(p.payment)+'</td><td>'+h(p.engineer)+'</td>'+
+      '<td><button class="btn-sm ghost" onclick="event.stopPropagation();openById(\'project\',this.closest(\'tr\'))">View</button></td>'+
+    '</tr>';
   }).join('');
 }
 
@@ -2112,8 +2183,16 @@ async function renderTickets() {
   DB.tickets = data.tickets || [];
   var container = document.getElementById('tickets-grid');
   if (!DB.tickets.length) { container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--text-dim)">No tickets found</div>'; return; }
+  var isAdmin = CURRENT_USER && CURRENT_USER.role === 'admin';
+  var tickDelBtn = document.getElementById('ticket-delete-btn');
+  if (tickDelBtn && !isAdmin) tickDelBtn.style.display = 'none';
+
   container.innerHTML = DB.tickets.map(function(t){
-    return '<div class="ticket-card '+h(t.priority)+'" data-id="'+h(t.id)+'" onclick="openById(\'ticket\',this)"><div class="tc-head"><div><div class="tc-id">'+h(t.id)+'</div><div class="tc-name">'+h(t.customer_name)+'</div><div class="tc-type">🔧 '+h(t.type)+'</div></div><div style="text-align:right">'+chip(t.status)+'<br><span style="margin-top:4px;display:inline-block">'+priBadge(t.priority)+'</span></div></div><div class="tc-foot"><span>📍 '+h(t.location)+'</span><span>☀ '+h(t.kw)+' kWp</span><span>👤 '+h(t.technician)+'</span><span>📅 '+(t.created_at||'').slice(0,10)+'</span></div></div>';
+    var cb = isAdmin ? '<div onclick="event.stopPropagation()" style="position:absolute;top:10px;right:10px"><input type="checkbox" class="ticket-checkbox" data-id="'+h(t.id)+'" onchange="updateTicketDeleteBtn()" style="cursor:pointer;accent-color:var(--sun);width:16px;height:16px"></div>' : '';
+    return '<div class="ticket-card '+h(t.priority)+'" data-id="'+h(t.id)+'" onclick="openById(\'ticket\',this)" style="position:relative">'+cb+
+      '<div class="tc-head"><div><div class="tc-id">'+h(t.id)+'</div><div class="tc-name">'+h(t.customer_name)+'</div><div class="tc-type">🔧 '+h(t.type)+'</div></div>'+
+      '<div style="text-align:right;'+(isAdmin?'padding-right:24px':'')+' ">'+chip(t.status)+'<br><span style="margin-top:4px;display:inline-block">'+priBadge(t.priority)+'</span></div></div>'+
+      '<div class="tc-foot"><span>📍 '+h(t.location)+'</span><span>☀ '+h(t.kw)+' kWp</span><span>👤 '+h(t.technician)+'</span><span>📅 '+(t.created_at||'').slice(0,10)+'</span></div></div>';
   }).join('');
 }
 
