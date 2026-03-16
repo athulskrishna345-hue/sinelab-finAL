@@ -1416,6 +1416,10 @@ body {
     <!-- LEADS PAGE -->
     <section class="page" id="page-leads">
       <div class="page-toolbar">
+        <div class="tab-strip" id="leads-tabs" style="margin-right:8px">
+          <button class="tab active" id="tab-active-leads" onclick="setLeadsTab('active',this)">Active Leads</button>
+          <button class="tab" id="tab-lost-leads" onclick="setLeadsTab('lost',this)" style="color:var(--red)">🚫 Lost <span id="lost-count-badge" style="background:var(--red-bg);color:var(--red);font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+        </div>
         <div class="filters" id="leads-filters">
           <select class="filter-sel" id="f-status" onchange="renderLeads()">
             <option value="">All Stages</option>
@@ -1871,6 +1875,16 @@ async function renderDashboard() {
 // ============================================================
 //  LEADS
 // ============================================================
+var leadsTab = 'active';
+
+function setLeadsTab(tab, el) {
+  leadsTab = tab;
+  document.querySelectorAll('#leads-tabs .tab').forEach(function(t){ t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  // Show/hide filters (not needed on lost tab but keep visible)
+  renderLeads();
+}
+
 async function renderLeads() {
   const fs  = (document.getElementById('f-status')||{value:''}).value;
   const fso = (document.getElementById('f-source')||{value:''}).value;
@@ -1878,7 +1892,11 @@ async function renderLeads() {
   const fm  = (document.getElementById('f-temp')||{value:''}).value;
   const fl  = (document.getElementById('f-location')||{value:''}).value;
   let url = '/api/leads?';
-  if (fs)  url += 'status='+encodeURIComponent(fs)+'&';
+  if (leadsTab === 'lost') {
+    url += 'status=Lost+%2F+Dropped&';
+  } else {
+    if (fs)  url += 'status='+encodeURIComponent(fs)+'&';
+  }
   if (fso) url += 'source='+encodeURIComponent(fso)+'&';
   if (ft)  url += 'type='+encodeURIComponent(ft)+'&';
   if (fm)  url += 'temp='+encodeURIComponent(fm)+'&';
@@ -1886,9 +1904,23 @@ async function renderLeads() {
   const data = await apiGet(url);
   if (!data) return;
   DB.leads = data.leads || [];
-  document.getElementById('leads-count').textContent = DB.leads.length + ' leads';
-  if (!DB.leads.length) {
-    document.getElementById('leads-tbody').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-dim)">No leads found</td></tr>';
+
+  // Update lost count badge
+  if (leadsTab === 'active') {
+    apiGet('/api/leads?status=Lost+%2F+Dropped').then(function(d){
+      var badge = document.getElementById('lost-count-badge');
+      if (badge && d) badge.textContent = (d.leads||[]).length;
+    });
+  }
+
+  // Exclude lost leads from active tab
+  var displayLeads = leadsTab === 'lost'
+    ? DB.leads
+    : DB.leads.filter(function(l){ return l.status !== 'Lost / Dropped'; });
+
+  document.getElementById('leads-count').textContent = displayLeads.length + (leadsTab==='lost' ? ' lost leads' : ' leads');
+  if (!displayLeads.length) {
+    document.getElementById('leads-tbody').innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text-dim)">'+(leadsTab==='lost'?'No lost leads 🎉':'No leads found')+'</td></tr>';
     return;
   }
   // Show/hide checkbox column based on role
@@ -1898,7 +1930,7 @@ async function renderLeads() {
   var massBtn = document.getElementById('mass-delete-btn');
   if (massBtn && !isAdmin) massBtn.style.display = 'none';
 
-  document.getElementById('leads-tbody').innerHTML = DB.leads.map(function(l){
+  document.getElementById('leads-tbody').innerHTML = displayLeads.map(function(l){
     const dateStr = (l.created_at||'').slice(0,10);
     return '<tr data-id="'+l.id+'" onclick="openById(\'lead\',this)">'+
       (isAdmin ? '<td onclick="event.stopPropagation()"><input type="checkbox" class="lead-checkbox" data-id="'+l.id+'" onchange="updateMassDeleteBtn()" style="cursor:pointer;accent-color:var(--sun)"></td>' : '<td style="display:none"></td>')+
@@ -2288,27 +2320,55 @@ async function openLeadPanelById(id) {
 function openLeadPanel(l) {
   var stages = ['New Lead','Contacted','Qualified','Site Survey Scheduled','Site Survey Completed','Quotation Under Preparation','Quotation Sent','Negotiation','Order Confirmed','Lost / Dropped'];
   var stageOpts = stages.map(function(s){ return '<option value="'+h(s)+'"'+(l.status===s?' selected':'')+'>'+h(s)+'</option>'; }).join('');
+  var tcOpts = ['Tele1','Tele2','Tele3','Sales1','Sales2','Sales3'].map(function(t){ return '<option'+(l.telecaller===t?' selected':'')+'>'+t+'</option>'; }).join('');
+  var srcOpts = ['Meta Ads','Google Ads','WhatsApp','Website','Referral','Walk-in','Call'].map(function(s){ return '<option'+(l.source===s?' selected':'')+'>'+s+'</option>'; }).join('');
+  var typeOpts = ['Residential','Commercial','Industrial'].map(function(t){ return '<option'+(l.type===t?' selected':'')+'>'+t+'</option>'; }).join('');
+  var phaseOpts = ['','Single Phase','3-Phase'].map(function(p){ return '<option value="'+p+'"'+(l.phase===p?' selected':'')+'>'+p+'</option>'; }).join('');
+  var roofOpts = ['','RCC Flat','Mangalore Tile','Metal Sheet','Open Land'].map(function(r){ return '<option value="'+r+'"'+(l.roof===r?' selected':'')+'>'+r+'</option>'; }).join('');
+  var subOpts = ['Yes','No','Unknown'].map(function(s){ return '<option'+(l.subsidy===s?' selected':'')+'>'+s+'</option>'; }).join('');
+  var tempOpts = ['Hot','Warm','Cold'].map(function(t){ return '<option'+(l.temp===t?' selected':'')+'>'+t+'</option>'; }).join('');
+  var locOpts = ['Kochi','Palakkad','Other'].map(function(t){ return '<option'+(l.location===t?' selected':'')+'>'+t+'</option>'; }).join('');
+  var engOpts = ['','Engineer1','Engineer2','Engineer3'].map(function(e){ return '<option value="'+e+'"'+(l.survey_eng===e?' selected':'')+'>'+e+'</option>'; }).join('');
+
   var hdr = '<button class="ph-close" onclick="closePanel()">✕</button><div class="ph-title">'+h(l.name)+'</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+chip(l.status)+' '+tempChip(l.temp)+'</div>';
   var body =
+    // ── Edit bar ──
+    '<div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'+
+      '<span style="font-size:12px;color:var(--sun);font-weight:600">✏️ Editing Lead #'+l.id+'</span>'+
+      '<button class="btn-sm primary" onclick="saveLeadEdit('+l.id+')">💾 Save Changes</button>'+
+    '</div>'+
+
+    // ── Contact Details ──
     '<div class="panel-section"><div class="ps-label">Contact Details</div>'+
-    '<div class="ps-row"><span class="ps-key">Phone</span><span class="ps-val">'+h(l.phone)+'</span></div>'+
-    '<div class="ps-row"><span class="ps-key">Location</span><span class="ps-val">'+h(l.location)+'</span></div>'+
-    '<div class="ps-row"><span class="ps-key">Type</span><span class="ps-val">'+h(l.type)+'</span></div>'+
-    '<div class="ps-row"><span class="ps-key">Source</span><span class="ps-val">'+h(l.source)+'</span></div>'+
-    '<div class="ps-row"><span class="ps-key">Date</span><span class="ps-val">'+(l.lead_date||l.created_at||'').slice(0,10)+(l.lead_time?' at '+h(l.lead_time):'')+'</span></div>'+
-    '<div class="ps-row"><span class="ps-key">Telecaller</span><span class="ps-val">'+h(l.telecaller)+'</span></div></div>'+
+    '<div class="pf-group"><label class="pf-label">Name</label><input class="pf-input" id="pe-name" value="'+h(l.name||'')+'" spellcheck="false"></div>'+
+    '<div class="pf-group"><label class="pf-label">Phone</label><input class="pf-input" id="pe-phone" value="'+h(l.phone||'')+'" type="tel" inputmode="numeric"></div>'+
+    '<div class="pf-group"><label class="pf-label">Lead Source</label><select class="pf-select" id="pe-source">'+srcOpts+'</select></div>'+
+    '<div class="pf-group"><label class="pf-label">Location</label><select class="pf-select" id="pe-location"><option value="">Select</option>'+locOpts+'</select></div>'+
+    '<div class="pf-group"><label class="pf-label">Customer Type</label><select class="pf-select" id="pe-type">'+typeOpts+'</select></div>'+
+    '<div class="pf-group"><label class="pf-label">Telecaller</label><select class="pf-select" id="pe-telecaller">'+tcOpts+'</select></div>'+
+    '<div class="pf-group"><label class="pf-label">Lead Date</label><input class="pf-input" id="pe-lead-date" type="date" value="'+(l.lead_date||l.created_at||'').slice(0,10)+'"></div>'+
+    '<div class="pf-group"><label class="pf-label">Lead Time</label><input class="pf-input" id="pe-lead-time" type="time" value="'+(l.lead_time||'')+'"></div>'+
+    '</div>'+
+
+    // ── Technical Details ──
     '<div class="panel-section"><div class="ps-label">Technical Details</div>'+
-    '<div class="ps-row"><span class="ps-key">EB Bill</span><span class="ps-val">'+(l.bill?'₹'+h(l.bill):'—')+'</span></div>'+
-    '<div class="ps-row"><span class="ps-key">Phase</span><span class="ps-val">'+(h(l.phase)||'—')+'</span></div>'+
-    '<div class="ps-row"><span class="ps-key">Roof</span><span class="ps-val">'+(h(l.roof)||'—')+'</span></div>'+
-    '<div class="ps-row"><span class="ps-key">System Est.</span><span class="ps-val">'+(l.kw?h(l.kw)+' kWp':'—')+'</span></div>'+
-    '<div class="ps-row"><span class="ps-key">Subsidy</span><span class="ps-val">'+(h(l.subsidy)||'—')+'</span></div>'+
-    '<div class="ps-row"><span class="ps-key">Probability</span><span class="ps-val">'+(l.probability||'—')+'%</span></div></div>'+
-    (l.survey_date ? '<div class="panel-section" style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.2);border-radius:10px;padding:12px 14px"><div class="ps-label" style="color:var(--sun)">📅 Site Survey Scheduled</div>'+
-    '<div class="ps-row"><span class="ps-key">Date</span><span class="ps-val" style="color:var(--sun);font-weight:600">'+h(l.survey_date)+'</span></div>'+
-    '<div class="ps-row"><span class="ps-key">Time</span><span class="ps-val">'+h(l.survey_time||'10:00')+'</span></div>'+
-    '<div class="ps-row"><span class="ps-key">Engineer</span><span class="ps-val">'+(h(l.survey_eng)||'Unassigned')+'</span></div></div>' : '')+
-    '<div class="panel-section"><div class="ps-label" style="margin-bottom:10px">📎 Documents</div>'+
+    '<div class="pf-group"><label class="pf-label">Monthly EB Bill (₹)</label><input class="pf-input" id="pe-bill" type="number" value="'+h(l.bill||'')+'"></div>'+
+    '<div class="pf-group"><label class="pf-label">Phase</label><select class="pf-select" id="pe-phase">'+phaseOpts+'</select></div>'+
+    '<div class="pf-group"><label class="pf-label">Roof Type</label><select class="pf-select" id="pe-roof">'+roofOpts+'</select></div>'+
+    '<div class="pf-group"><label class="pf-label">Est. System (kWp)</label><input class="pf-input" id="pe-kw" value="'+h(l.kw||'')+'"></div>'+
+    '<div class="pf-group"><label class="pf-label">Subsidy</label><select class="pf-select" id="pe-subsidy">'+subOpts+'</select></div>'+
+    '<div class="pf-group"><label class="pf-label">Interest Level</label><select class="pf-select" id="pe-temp">'+tempOpts+'</select></div>'+
+    '</div>'+
+
+    // ── Site Survey ──
+    '<div class="panel-section"><div class="ps-label" style="color:var(--sun)">📅 Site Survey</div>'+
+    '<div class="pf-group"><label class="pf-label">Survey Date</label><input class="pf-input" id="pe-survey-date" type="date" value="'+(l.survey_date||'')+'"></div>'+
+    '<div class="pf-group"><label class="pf-label">Survey Time</label><input class="pf-input" id="pe-survey-time" type="time" value="'+(l.survey_time||'10:00')+'"></div>'+
+    '<div class="pf-group"><label class="pf-label">Engineer</label><select class="pf-select" id="pe-survey-eng">'+engOpts+'</select></div>'+
+    '</div>'+
+
+    // ── Documents ──
+    '<div class="panel-section"><div class="ps-label">📎 Documents</div>'+
     '<div style="display:flex;flex-direction:column;gap:8px">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">'+
         '<div style="display:flex;align-items:center;gap:8px"><span>📄</span><span style="font-size:13px;font-weight:600">KSEB Bill</span>'+
@@ -2327,10 +2387,27 @@ function openLeadPanel(l) {
         '</div>'+
       '</div>'+
     '</div></div>'+
+
+    // ── Stage & Notes ──
     '<div class="panel-section"><div class="ps-label">Update Stage</div>'+
-    '<div class="pf-group"><select class="pf-select" id="pp-status" onchange="updateLeadStatus(\''+l.id+'\',this.value)"><option value="">Move to stage...</option>'+stageOpts+'</select></div>'+
-    '<div class="pf-group"><label class="pf-label">Follow-up Note</label><textarea class="pf-textarea" id="pp-note" placeholder="Add a note...">'+h(l.notes||'')+'</textarea></div>'+
-    '<div class="pf-actions"><button class="btn-sm primary" style="flex:1" onclick="saveLeadNote(\''+l.id+'\')">Save Note</button><button class="btn-sm ghost" onclick="scheduleServey(\''+l.id+'\')">📋 Schedule Survey</button></div></div>'+
+    '<div class="pf-group"><select class="pf-select" id="pp-status" onchange="onLeadStatusChange(\''+l.id+'\',this.value)"><option value="">Move to stage...</option>'+stageOpts+'</select></div>'+
+    '<div class="pf-group" id="lost-reason-group" style="display:none">'+
+      '<label class="pf-label" style="color:var(--red)">🚫 Lost Reason</label>'+
+      '<select class="pf-select" id="pp-lost-reason" style="border-color:rgba(255,85,114,0.4)">'+
+        '<option value="">Select reason...</option>'+
+        '<option>Price too high</option><option>Chose competitor</option>'+
+        '<option>Not interested anymore</option><option>No budget</option>'+
+        '<option>No response</option><option>Project cancelled</option><option>Other</option>'+
+      '</select>'+
+    '</div>'+
+    '<div class="pf-group"><label class="pf-label">Notes</label><textarea class="pf-textarea" id="pp-note" placeholder="Add a note...">'+h(l.notes||'')+'</textarea></div>'+
+    '<div class="pf-actions">'+
+      '<button class="btn-sm primary" style="flex:1" onclick="saveLeadEdit('+l.id+')">💾 Save All</button>'+
+      '<button class="btn-sm ghost" style="color:var(--red)" onclick="markLeadLost(\''+l.id+'\')">🚫 Lost</button>'+
+      '<button class="btn-sm ghost" onclick="scheduleServey(\''+l.id+'\')">📋 Survey</button>'+
+    '</div></div>'+
+
+    // ── Timeline ──
     '<div class="panel-section"><div class="ps-label">Timeline</div><div class="timeline">'+
     '<div class="tl-item"><div class="tl-dot" style="background:var(--sun)"></div><div class="tl-label">Current: '+h(l.status)+'</div><div class="tl-time">'+(l.updated_at||l.created_at||'').slice(0,10)+'</div></div>'+
     '<div class="tl-item"><div class="tl-dot" style="background:var(--blue)"></div><div class="tl-label">Lead Created</div><div class="tl-time">'+(l.created_at||'').slice(0,10)+' · '+h(l.source)+'</div></div>'+
@@ -2346,6 +2423,61 @@ async function updateLeadStatus(id, status) {
   if (currentPage==='leads') renderLeads();
   if (currentPage==='kanban') renderKanban();
   if (currentPage==='dashboard') renderDashboard();
+  openLeadPanel(data.lead);
+}
+
+function onLeadStatusChange(id, status) {
+  var lostGroup = document.getElementById('lost-reason-group');
+  if (lostGroup) lostGroup.style.display = status === 'Lost / Dropped' ? 'block' : 'none';
+  if (status && status !== 'Lost / Dropped') updateLeadStatus(id, status);
+}
+
+async function markLeadLost(id) {
+  var reason = (document.getElementById('pp-lost-reason')||{value:''}).value;
+  var note = (document.getElementById('pp-note')||{value:''}).value;
+  var fullNote = note + (reason ? '\n[Lost Reason: '+reason+']' : '');
+  if (!reason) { showToast('Please select a lost reason','error'); document.getElementById('lost-reason-group').style.display='block'; return; }
+  const data = await apiPut('/api/leads/'+id, { status:'Lost / Dropped', notes: fullNote });
+  if (!data || data.error) { showToast(data?.error||'Error','error'); return; }
+  showToast('Lead marked as Lost','info');
+  closePanel();
+  renderLeads();
+}
+
+async function saveLeadEdit(id) {
+  var payload = {
+    name:        (document.getElementById('pe-name')||{value:''}).value.trim(),
+    phone:       (document.getElementById('pe-phone')||{value:''}).value.trim(),
+    source:      (document.getElementById('pe-source')||{value:''}).value,
+    location:    (document.getElementById('pe-location')||{value:''}).value,
+    type:        (document.getElementById('pe-type')||{value:''}).value,
+    telecaller:  (document.getElementById('pe-telecaller')||{value:''}).value,
+    lead_date:   (document.getElementById('pe-lead-date')||{value:''}).value,
+    lead_time:   (document.getElementById('pe-lead-time')||{value:''}).value,
+    bill:        (document.getElementById('pe-bill')||{value:''}).value,
+    phase:       (document.getElementById('pe-phase')||{value:''}).value,
+    roof:        (document.getElementById('pe-roof')||{value:''}).value,
+    kw:          (document.getElementById('pe-kw')||{value:''}).value,
+    subsidy:     (document.getElementById('pe-subsidy')||{value:''}).value,
+    temp:        (document.getElementById('pe-temp')||{value:''}).value,
+    survey_date: (document.getElementById('pe-survey-date')||{value:''}).value,
+    survey_time: (document.getElementById('pe-survey-time')||{value:''}).value,
+    survey_eng:  (document.getElementById('pe-survey-eng')||{value:''}).value,
+    notes:       (document.getElementById('pp-note')||{value:''}).value,
+  };
+  if (!payload.name)  { showToast('Name is required','error'); return; }
+  if (!payload.phone) { showToast('Phone is required','error'); return; }
+  var btn = document.querySelector('[onclick="saveLeadEdit('+id+')"]');
+  if (btn) { btn.textContent = '⏳ Saving...'; btn.disabled = true; }
+  const data = await apiPut('/api/leads/'+id, payload);
+  if (!data || data.error) {
+    showToast(data?.error||'Save failed','error');
+    if (btn) { btn.textContent = '💾 Save All'; btn.disabled = false; }
+    return;
+  }
+  showToast('Lead updated ✓','success');
+  if (currentPage==='leads') renderLeads();
+  if (currentPage==='kanban') renderKanban();
   openLeadPanel(data.lead);
 }
 
