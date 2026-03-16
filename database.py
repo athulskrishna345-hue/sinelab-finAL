@@ -60,6 +60,8 @@ def init_db():
                 survey_eng TEXT DEFAULT '',
                 kseb_bill_file TEXT DEFAULT '',
                 quotation_file TEXT DEFAULT '',
+                lead_date TEXT DEFAULT '',
+                lead_time TEXT DEFAULT '',
                 created_at TEXT DEFAULT (datetime('now')),
                 updated_at TEXT DEFAULT (datetime('now'))
             );
@@ -145,7 +147,7 @@ def init_db():
                 _seed(conn, c)
             # Migrations — safely add new columns to existing databases
             existing_cols = [row[1] for row in c.execute("PRAGMA table_info(leads)").fetchall()]
-            for col in ['survey_date', 'survey_time', 'survey_eng', 'kseb_bill_file', 'quotation_file']:
+            for col in ['survey_date', 'survey_time', 'survey_eng', 'kseb_bill_file', 'quotation_file', 'lead_date', 'lead_time']:
                 if col not in existing_cols:
                     c.execute(f"ALTER TABLE leads ADD COLUMN {col} TEXT DEFAULT ''")
             conn.commit()
