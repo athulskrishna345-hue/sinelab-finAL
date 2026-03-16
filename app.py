@@ -2,10 +2,13 @@ from flask import Flask, request, jsonify, send_file, send_from_directory
 from database import get_db, init_db, hp
 from functools import wraps
 from datetime import datetime, timedelta
-import secrets, os, json
+import secrets, os, json, werkzeug
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['JSON_SORT_KEYS'] = False
+
+UPLOAD_DIR = os.path.join(os.environ.get('DB_DIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'db')), 'uploads')
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Initialize DB on startup (works with gunicorn)
 with app.app_context():
@@ -134,6 +137,37 @@ def dashboard():
     return jsonify({'stats':stats,'funnel':funnel,'sla_alerts':sla,'activity':activ,'dept_tasks':dept})
 
 # ── Leads ────────────────────────────────────────────────────
+@app.route('/api/leads/<int:lid>/upload', methods=['POST'])
+@require_auth
+def upload_lead_file(lid):
+    file_type = request.form.get('file_type','')  # 'kseb_bill' or 'quotation'
+    if file_type not in ('kseb_bill','quotation'):
+        return jsonify({'error':'Invalid file_type'}), 400
+    f = request.files.get('file')
+    if not f: return jsonify({'error':'No file provided'}), 400
+    safe_name = werkzeug.utils.secure_filename(f.filename)
+    ext = os.path.splitext(safe_name)[1]
+    filename = f"{file_type}_{lid}{ext}"
+    save_path = os.path.join(UPLOAD_DIR, filename)
+    f.save(save_path)
+    col = 'kseb_bill_file' if file_type == 'kseb_bill' else 'quotation_file'
+    conn = get_db()
+    conn.execute(f"UPDATE leads SET {col}=? WHERE id=?", (filename, lid))
+    conn.commit()
+    lead = row(conn.execute("SELECT * FROM leads WHERE id=?", (lid,)).fetchone())
+    conn.close()
+    log(request.uname, f"Uploaded {file_type} for lead {lid}", 'lead', lid)
+    return jsonify({'ok': True, 'filename': filename, 'lead': lead})
+
+@app.route('/api/files/<filename>', methods=['GET'])
+@require_auth
+def serve_file(filename):
+    safe = werkzeug.utils.secure_filename(filename)
+    path = os.path.join(UPLOAD_DIR, safe)
+    if not os.path.exists(path):
+        return jsonify({'error':'File not found'}), 404
+    return send_file(path, as_attachment=False)
+
 @app.route('/api/leads', methods=['GET'])
 @require_auth
 def get_leads():
