@@ -41,6 +41,7 @@
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+input, textarea, select { user-select: text; -webkit-user-select: text; }
 
 html { font-size: 14px; -webkit-font-smoothing: antialiased; }
 
@@ -2294,7 +2295,7 @@ function openLeadPanel(l) {
     '<div class="ps-row"><span class="ps-key">Location</span><span class="ps-val">'+h(l.location)+'</span></div>'+
     '<div class="ps-row"><span class="ps-key">Type</span><span class="ps-val">'+h(l.type)+'</span></div>'+
     '<div class="ps-row"><span class="ps-key">Source</span><span class="ps-val">'+h(l.source)+'</span></div>'+
-    '<div class="ps-row"><span class="ps-key">Date</span><span class="ps-val">'+(l.created_at||'').slice(0,10)+'</span></div>'+
+    '<div class="ps-row"><span class="ps-key">Date</span><span class="ps-val">'+(l.lead_date||l.created_at||'').slice(0,10)+(l.lead_time?' at '+h(l.lead_time):'')+'</span></div>'+
     '<div class="ps-row"><span class="ps-key">Telecaller</span><span class="ps-val">'+h(l.telecaller)+'</span></div></div>'+
     '<div class="panel-section"><div class="ps-label">Technical Details</div>'+
     '<div class="ps-row"><span class="ps-key">EB Bill</span><span class="ps-val">'+(l.bill?'₹'+h(l.bill):'—')+'</span></div>'+
@@ -2307,6 +2308,25 @@ function openLeadPanel(l) {
     '<div class="ps-row"><span class="ps-key">Date</span><span class="ps-val" style="color:var(--sun);font-weight:600">'+h(l.survey_date)+'</span></div>'+
     '<div class="ps-row"><span class="ps-key">Time</span><span class="ps-val">'+h(l.survey_time||'10:00')+'</span></div>'+
     '<div class="ps-row"><span class="ps-key">Engineer</span><span class="ps-val">'+(h(l.survey_eng)||'Unassigned')+'</span></div></div>' : '')+
+    '<div class="panel-section"><div class="ps-label" style="margin-bottom:10px">📎 Documents</div>'+
+    '<div style="display:flex;flex-direction:column;gap:8px">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">'+
+        '<div style="display:flex;align-items:center;gap:8px"><span>📄</span><span style="font-size:13px;font-weight:600">KSEB Bill</span>'+
+        (l.kseb_bill_file ? '<span style="font-size:11px;color:var(--green)">✓ Uploaded</span>' : '<span style="font-size:11px;color:var(--text-dim)">Not attached</span>')+'</div>'+
+        '<div style="display:flex;gap:6px">'+
+          (l.kseb_bill_file ? '<a href="/api/files/'+h(l.kseb_bill_file)+'" target="_blank" class="btn-sm ghost" onclick="event.stopPropagation()">👁 View</a>' : '')+
+          '<button class="btn-sm ghost" style="color:var(--sun)" onclick="event.stopPropagation();attachFileToLead('+l.id+',\'kseb_bill\')">'+(l.kseb_bill_file?'🔄 Replace':'📎 Attach')+'</button>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">'+
+        '<div style="display:flex;align-items:center;gap:8px"><span>📋</span><span style="font-size:13px;font-weight:600">Quotation</span>'+
+        (l.quotation_file ? '<span style="font-size:11px;color:var(--green)">✓ Uploaded</span>' : '<span style="font-size:11px;color:var(--text-dim)">Not attached</span>')+'</div>'+
+        '<div style="display:flex;gap:6px">'+
+          (l.quotation_file ? '<a href="/api/files/'+h(l.quotation_file)+'" target="_blank" class="btn-sm ghost" onclick="event.stopPropagation()">👁 View</a>' : '')+
+          '<button class="btn-sm ghost" style="color:var(--sun)" onclick="event.stopPropagation();attachFileToLead('+l.id+',\'quotation\')">'+(l.quotation_file?'🔄 Replace':'📎 Attach')+'</button>'+
+        '</div>'+
+      '</div>'+
+    '</div></div>'+
     '<div class="panel-section"><div class="ps-label">Update Stage</div>'+
     '<div class="pf-group"><select class="pf-select" id="pp-status" onchange="updateLeadStatus(\''+l.id+'\',this.value)"><option value="">Move to stage...</option>'+stageOpts+'</select></div>'+
     '<div class="pf-group"><label class="pf-label">Follow-up Note</label><textarea class="pf-textarea" id="pp-note" placeholder="Add a note...">'+h(l.notes||'')+'</textarea></div>'+
@@ -2497,11 +2517,14 @@ function closeModal() {
 
 function openNewLeadModal() {
   var today = new Date().toISOString().slice(0,10);
+  var nowTime = new Date().toTimeString().slice(0,5);
   openModal('Create New Lead',
     '<div class="sla-note">⏱ SLA: Enter lead within 15 minutes of first contact</div>'+
     '<div class="form-grid">'+
-    '<div class="form-group"><label class="f-label">Name <span class="required-star">*</span></label><input class="f-input" id="nl-name" placeholder="Full name" autocomplete="off"></div>'+
-    '<div class="form-group"><label class="f-label">Phone <span class="required-star">*</span></label><input class="f-input" id="nl-phone" placeholder="+91 XXXXX XXXXX"></div>'+
+    '<div class="form-group"><label class="f-label">Name <span class="required-star">*</span></label><input class="f-input" id="nl-name" placeholder="Full name" autocomplete="name" spellcheck="false"></div>'+
+    '<div class="form-group"><label class="f-label">Phone <span class="required-star">*</span></label><input class="f-input" id="nl-phone" placeholder="+91 XXXXX XXXXX" type="tel" autocomplete="tel" inputmode="numeric"></div>'+
+    '<div class="form-group"><label class="f-label">📅 Lead Date <span class="required-star">*</span></label><input class="f-input" id="nl-lead-date" type="date" value="'+today+'"></div>'+
+    '<div class="form-group"><label class="f-label">⏰ Lead Time</label><input class="f-input" id="nl-lead-time" type="time" value="'+nowTime+'"></div>'+
     '<div class="form-group"><label class="f-label">Lead Source <span class="required-star">*</span></label><select class="f-select" id="nl-source"><option value="">Select</option><option>Meta Ads</option><option>Google Ads</option><option>WhatsApp</option><option>Website</option><option>Referral</option><option>Walk-in</option><option>Call</option></select></div>'+
     '<div class="form-group"><label class="f-label">Telecaller</label><select class="f-select" id="nl-tc"><option>Tele1</option><option>Tele2</option><option>Tele3</option></select></div>'+
     '<div class="form-group"><label class="f-label">Location</label><select class="f-select" id="nl-loc"><option value="">Select Location</option><option>Kochi</option><option>Palakkad</option><option>Other</option></select></div>'+
@@ -2521,8 +2544,68 @@ function openNewLeadModal() {
       '<div style="margin-top:8px"><label class="f-label">Assign Engineer / Surveyor</label><select class="f-select" id="nl-survey-eng"><option value="">Unassigned</option><option>Engineer1</option><option>Engineer2</option><option>Engineer3</option></select></div>'+
     '</div>'+
     '<div class="form-group span2"><label class="f-label">Notes</label><textarea class="f-textarea" id="nl-notes" placeholder="Any additional info..."></textarea></div>'+
+    '<div class="form-group span2" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px">'+
+      '<label class="f-label" style="font-size:13px;margin-bottom:10px;display:block">📎 Attach Documents <span style="font-size:11px;color:var(--text-dim);font-weight:400">(optional)</span></label>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+        '<div>'+
+          '<label class="f-label">KSEB Bill</label>'+
+          '<label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px dashed var(--border2);border-radius:8px;cursor:pointer;transition:border-color 0.15s" onmouseover="this.style.borderColor=\'var(--sun)\'" onmouseout="this.style.borderColor=\'var(--border2)\'">'+
+            '<span style="font-size:18px">📄</span>'+
+            '<span id="nl-kseb-label" style="font-size:12px;color:var(--text-dim)">Choose file</span>'+
+            '<input type="file" id="nl-kseb-file" style="display:none" onchange="updateFileLabel(this,\'nl-kseb-label\')">'+
+          '</label>'+
+        '</div>'+
+        '<div>'+
+          '<label class="f-label">Quotation</label>'+
+          '<label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px dashed var(--border2);border-radius:8px;cursor:pointer;transition:border-color 0.15s" onmouseover="this.style.borderColor=\'var(--sun)\'" onmouseout="this.style.borderColor=\'var(--border2)\'">'+
+            '<span style="font-size:18px">📋</span>'+
+            '<span id="nl-quot-label" style="font-size:12px;color:var(--text-dim)">Choose file</span>'+
+            '<input type="file" id="nl-quot-file" style="display:none" onchange="updateFileLabel(this,\'nl-quot-label\')">'+
+          '</label>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
     '</div>'+
     '<div class="form-actions"><button class="btn-outline" onclick="closeModal()">Cancel</button><button class="btn-primary" onclick="createLead()">✓ Create Lead</button></div>');
+}
+
+function updateFileLabel(input, labelId) {
+  var label = document.getElementById(labelId);
+  if (label && input.files[0]) {
+    var name = input.files[0].name;
+    label.textContent = name.length > 20 ? name.slice(0,18)+'…' : name;
+    label.style.color = 'var(--green)';
+  }
+}
+
+async function uploadLeadFile(lid, fileType, file) {
+  var form = new FormData();
+  form.append('file', file);
+  form.append('file_type', fileType);
+  try {
+    var resp = await fetch('/api/leads/'+lid+'/upload', {
+      method: 'POST',
+      headers: { 'X-Token': AUTH_TOKEN },
+      body: form
+    });
+    var data = await resp.json();
+    if (!data.ok) showToast('File upload failed: '+fileType, 'error');
+  } catch(e) {
+    showToast('File upload error', 'error');
+  }
+}
+
+async function attachFileToLead(lid, fileType) {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.onchange = async function() {
+    if (!input.files[0]) return;
+    showToast('Uploading…', 'info');
+    await uploadLeadFile(lid, fileType, input.files[0]);
+    showToast((fileType === 'kseb_bill' ? 'KSEB Bill' : 'Quotation') + ' uploaded!', 'success');
+    openLeadPanelById(lid);
+  };
+  input.click();
 }
 
 async function createLead() {
@@ -2552,9 +2635,17 @@ async function createLead() {
     survey_eng:  surveyEng,
     status:      surveyDate ? 'Site Survey Scheduled' : 'New Lead',
     follow_up_date: surveyDate,
+    lead_date:   document.getElementById('nl-lead-date').value||'',
+    lead_time:   document.getElementById('nl-lead-time').value||'',
   };
   const data = await apiPost('/api/leads', payload);
   if (!data || data.error) { showToast(data?.error||'Error creating lead','error'); return; }
+  const lid = data.lead.id;
+  // Upload files if selected
+  var ksebFile = document.getElementById('nl-kseb-file');
+  var quotFile  = document.getElementById('nl-quot-file');
+  if (ksebFile && ksebFile.files[0]) await uploadLeadFile(lid, 'kseb_bill', ksebFile.files[0]);
+  if (quotFile  && quotFile.files[0])  await uploadLeadFile(lid, 'quotation',  quotFile.files[0]);
   closeModal();
   showToast('Lead created for '+name,'success');
   navigate('leads');
