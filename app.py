@@ -257,6 +257,7 @@ def update_lead(lid):
 @app.route('/api/leads/<int:lid>', methods=['DELETE'])
 @require_auth
 def delete_lead(lid):
+    if request.urole != 'admin': return jsonify({'error':'Admin only'}), 403
     conn = get_db()
     l = conn.execute("SELECT name FROM leads WHERE id=?", (lid,)).fetchone()
     if not l: return jsonify({'error':'Not found'}), 404
