@@ -140,19 +140,31 @@ def dashboard():
 @app.route('/api/leads/<int:lid>/upload', methods=['POST'])
 @require_auth
 def upload_lead_file(lid):
-    file_type = request.form.get('file_type','')  # 'kseb_bill' or 'quotation'
-    if file_type not in ('kseb_bill','quotation'):
+    file_type = request.form.get('file_type','')
+    if file_type not in ('kseb_bill','quotation','site_photo'):
         return jsonify({'error':'Invalid file_type'}), 400
     f = request.files.get('file')
     if not f: return jsonify({'error':'No file provided'}), 400
     safe_name = werkzeug.utils.secure_filename(f.filename)
     ext = os.path.splitext(safe_name)[1]
-    filename = f"{file_type}_{lid}{ext}"
+    if file_type == 'site_photo':
+        idx = request.form.get('file_index','0')
+        filename = f"site_photo_{lid}_{idx}{ext}"
+    else:
+        filename = f"{file_type}_{lid}{ext}"
     save_path = os.path.join(UPLOAD_DIR, filename)
     f.save(save_path)
-    col = 'kseb_bill_file' if file_type == 'kseb_bill' else 'quotation_file'
     conn = get_db()
-    conn.execute(f"UPDATE leads SET {col}=? WHERE id=?", (filename, lid))
+    if file_type == 'site_photo':
+        # Append to JSON list
+        existing = conn.execute("SELECT site_photos FROM leads WHERE id=?", (lid,)).fetchone()
+        photos = json.loads(existing[0] if existing and existing[0] else '[]')
+        if filename not in photos:
+            photos.append(filename)
+        conn.execute("UPDATE leads SET site_photos=? WHERE id=?", (json.dumps(photos), lid))
+    else:
+        col = 'kseb_bill_file' if file_type == 'kseb_bill' else 'quotation_file'
+        conn.execute(f"UPDATE leads SET {col}=? WHERE id=?", (filename, lid))
     conn.commit()
     lead = row(conn.execute("SELECT * FROM leads WHERE id=?", (lid,)).fetchone())
     conn.close()
