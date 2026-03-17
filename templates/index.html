@@ -2386,6 +2386,24 @@ function openLeadPanel(l) {
           '<button class="btn-sm ghost" style="color:var(--sun)" onclick="event.stopPropagation();attachFileToLead('+l.id+',\'quotation\')">'+(l.quotation_file?'🔄 Replace':'📎 Attach')+'</button>'+
         '</div>'+
       '</div>'+
+      // Site Photos row
+      (function(){
+        var photos = [];
+        try { photos = JSON.parse(l.site_photos||'[]'); } catch(e){}
+        var thumbs = photos.map(function(p,i){
+          return '<a href="/api/files/'+h(p)+'" target="_blank" onclick="event.stopPropagation()" title="Photo '+(i+1)+'">'+
+            '<img src="/api/files/'+h(p)+'" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border2)" onerror="this.style.display=\'none\'">'+
+          '</a>';
+        }).join('');
+        return '<div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:'+(photos.length?'10':'0')+'px">'+
+            '<div style="display:flex;align-items:center;gap:8px"><span>🏠</span><span style="font-size:13px;font-weight:600">Site Photos</span>'+
+            (photos.length ? '<span style="font-size:11px;color:var(--green)">✓ '+photos.length+' photo(s)</span>' : '<span style="font-size:11px;color:var(--text-dim)">No photos</span>')+'</div>'+
+            '<button class="btn-sm ghost" style="color:var(--blue)" onclick="event.stopPropagation();attachFileToLead('+l.id+',\'site_photo\')">📸 Add Photos</button>'+
+          '</div>'+
+          (photos.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px">'+thumbs+'</div>' : '')+
+        '</div>';
+      })() +
     '</div></div>'+
 
     // ── Stage & Notes ──
@@ -2696,9 +2714,46 @@ function openNewLeadModal() {
           '</label>'+
         '</div>'+
       '</div>'+
+      '<div style="margin-top:10px">'+
+        '<label class="f-label">📸 Site Photos <span style="font-size:11px;color:var(--text-dim);font-weight:400">(multiple allowed)</span></label>'+
+        '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px dashed var(--border2);border-radius:8px;cursor:pointer;transition:border-color 0.15s" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'var(--border2)\'">'+
+          '<span style="font-size:22px">🏠</span>'+
+          '<div>'+
+            '<div id="nl-photos-label" style="font-size:12px;color:var(--text-dim)">Choose photos (JPG, PNG, HEIC...)</div>'+
+            '<div id="nl-photos-preview" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>'+
+          '</div>'+
+          '<input type="file" id="nl-photos-file" style="display:none" multiple accept="image/*" onchange="updatePhotosPreview(this)">'+
+        '</label>'+
+      '</div>'+
     '</div>'+
     '</div>'+
     '<div class="form-actions"><button class="btn-outline" onclick="closeModal()">Cancel</button><button class="btn-primary" onclick="createLead()">✓ Create Lead</button></div>');
+}
+
+function updatePhotosPreview(input) {
+  var label = document.getElementById('nl-photos-label');
+  var preview = document.getElementById('nl-photos-preview');
+  if (!input.files.length) return;
+  if (label) { label.textContent = input.files.length + ' photo(s) selected'; label.style.color = 'var(--blue)'; }
+  if (preview) {
+    preview.innerHTML = '';
+    Array.from(input.files).slice(0,6).forEach(function(file) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var img = document.createElement('img');
+        img.src = e.target.result;
+        img.style.cssText = 'width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--border2)';
+        preview.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    });
+    if (input.files.length > 6) {
+      var more = document.createElement('div');
+      more.style.cssText = 'width:48px;height:48px;border-radius:6px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-dim)';
+      more.textContent = '+' + (input.files.length - 6);
+      preview.appendChild(more);
+    }
+  }
 }
 
 function updateFileLabel(input, labelId) {
@@ -2710,10 +2765,11 @@ function updateFileLabel(input, labelId) {
   }
 }
 
-async function uploadLeadFile(lid, fileType, file) {
+async function uploadLeadFile(lid, fileType, file, idx) {
   var form = new FormData();
   form.append('file', file);
   form.append('file_type', fileType);
+  if (idx !== undefined) form.append('file_index', idx);
   try {
     var resp = await fetch('/api/leads/'+lid+'/upload', {
       method: 'POST',
@@ -2730,11 +2786,18 @@ async function uploadLeadFile(lid, fileType, file) {
 async function attachFileToLead(lid, fileType) {
   var input = document.createElement('input');
   input.type = 'file';
+  if (fileType === 'site_photo') {
+    input.multiple = true;
+    input.accept = 'image/*';
+  }
   input.onchange = async function() {
-    if (!input.files[0]) return;
+    if (!input.files.length) return;
     showToast('Uploading…', 'info');
-    await uploadLeadFile(lid, fileType, input.files[0]);
-    showToast((fileType === 'kseb_bill' ? 'KSEB Bill' : 'Quotation') + ' uploaded!', 'success');
+    for (var i = 0; i < input.files.length; i++) {
+      await uploadLeadFile(lid, fileType, input.files[i], i);
+    }
+    var label = fileType === 'kseb_bill' ? 'KSEB Bill' : fileType === 'quotation' ? 'Quotation' : input.files.length + ' photo(s)';
+    showToast(label + ' uploaded!', 'success');
     openLeadPanelById(lid);
   };
   input.click();
@@ -2774,10 +2837,16 @@ async function createLead() {
   if (!data || data.error) { showToast(data?.error||'Error creating lead','error'); return; }
   const lid = data.lead.id;
   // Upload files if selected
-  var ksebFile = document.getElementById('nl-kseb-file');
+  var ksebFile  = document.getElementById('nl-kseb-file');
   var quotFile  = document.getElementById('nl-quot-file');
-  if (ksebFile && ksebFile.files[0]) await uploadLeadFile(lid, 'kseb_bill', ksebFile.files[0]);
-  if (quotFile  && quotFile.files[0])  await uploadLeadFile(lid, 'quotation',  quotFile.files[0]);
+  var photosEl  = document.getElementById('nl-photos-file');
+  if (ksebFile && ksebFile.files[0])  await uploadLeadFile(lid, 'kseb_bill', ksebFile.files[0]);
+  if (quotFile  && quotFile.files[0]) await uploadLeadFile(lid, 'quotation',  quotFile.files[0]);
+  if (photosEl  && photosEl.files.length) {
+    for (var i = 0; i < photosEl.files.length; i++) {
+      await uploadLeadFile(lid, 'site_photo', photosEl.files[i], i);
+    }
+  }
   closeModal();
   showToast('Lead created for '+name,'success');
   navigate('leads');
