@@ -2414,6 +2414,14 @@ function openLeadPanel(l) {
     '<div class="pf-group"><label class="pf-label">Engineer</label><select class="pf-select" id="pe-survey-eng">'+engOpts+'</select></div>'+
     '</div>'+
 
+    // ── Follow-up Reminder ──
+    '<div class="panel-section" style="background:rgba(92,200,250,0.04);border:1px solid rgba(92,200,250,0.15);border-radius:10px;padding:12px 14px">'+
+    '<div class="ps-label" style="color:var(--blue);margin-bottom:10px">🔔 Follow-up Reminder</div>'+
+    '<div class="pf-group"><label class="pf-label">Follow-up Date</label><input class="pf-input" id="pe-followup-date" type="date" value="'+(l.follow_up_date||'')+'"></div>'+
+    '<div class="pf-group"><label class="pf-label">Follow-up Time</label><input class="pf-input" id="pe-followup-time" type="time" value="'+(l.follow_up_time||'10:00')+'"></div>'+
+    '<div class="pf-group"><label class="pf-label">Reminder Note</label><input class="pf-input" id="pe-followup-note" placeholder="e.g. Call to check decision..." value="'+h(l.follow_up_note||'')+'"></div>'+
+    '</div>'+
+
     // ── Documents ──
     '<div class="panel-section"><div class="ps-label">📎 Documents</div>'+
     '<div style="display:flex;flex-direction:column;gap:8px">'+
@@ -2528,6 +2536,9 @@ async function saveLeadEdit(id) {
     survey_date: (document.getElementById('pe-survey-date')||{value:''}).value,
     survey_time: (document.getElementById('pe-survey-time')||{value:''}).value,
     survey_eng:  (document.getElementById('pe-survey-eng')||{value:''}).value,
+    follow_up_date: (document.getElementById('pe-followup-date')||{value:''}).value,
+    follow_up_time: (document.getElementById('pe-followup-time')||{value:''}).value,
+    follow_up_note: (document.getElementById('pe-followup-note')||{value:''}).value,
     notes:       (document.getElementById('pp-note')||{value:''}).value,
   };
   if (!payload.name)  { showToast('Name is required','error'); return; }
@@ -2740,6 +2751,14 @@ function openNewLeadModal() {
       '</div>'+
       '<div style="margin-top:8px"><label class="f-label">Assign Engineer / Surveyor</label><select class="f-select" id="nl-survey-eng"><option value="">Unassigned</option><option>Engineer1</option><option>Engineer2</option><option>Engineer3</option></select></div>'+
     '</div>'+
+    '<div class="form-group span2" style="background:rgba(92,200,250,0.06);border:1px solid rgba(92,200,250,0.2);border-radius:10px;padding:14px;margin-top:4px">'+
+      '<label class="f-label" style="color:var(--blue);font-size:13px;margin-bottom:10px;display:block">🔔 Follow-up Reminder <span style="font-size:11px;color:var(--text-dim);font-weight:400">(optional)</span></label>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+        '<div><label class="f-label">Follow-up Date</label><input class="f-input" id="nl-followup-date" type="date" min="'+today+'"></div>'+
+        '<div><label class="f-label">Follow-up Time</label><input class="f-input" id="nl-followup-time" type="time" value="10:00"></div>'+
+      '</div>'+
+      '<div style="margin-top:8px"><label class="f-label">Reminder Note</label><input class="f-input" id="nl-followup-note" placeholder="e.g. Call to check quotation decision..."></div>'+
+    '</div>'+
     '<div class="form-group span2"><label class="f-label">Notes</label><textarea class="f-textarea" id="nl-notes" placeholder="Any additional info..."></textarea></div>'+
     '<div class="form-group span2" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px">'+
       '<label class="f-label" style="font-size:13px;margin-bottom:10px;display:block">📎 Attach Documents <span style="font-size:11px;color:var(--text-dim);font-weight:400">(optional)</span></label>'+
@@ -2860,6 +2879,9 @@ async function createLead() {
   const surveyDate = document.getElementById('nl-survey-date').value || '';
   const surveyTime = document.getElementById('nl-survey-time').value || '';
   const surveyEng  = document.getElementById('nl-survey-eng').value || '';
+  const followupDate = document.getElementById('nl-followup-date').value || '';
+  const followupTime = document.getElementById('nl-followup-time').value || '';
+  const followupNote = document.getElementById('nl-followup-note').value || '';
   const payload = {
     name, phone, source,
     location:    document.getElementById('nl-loc').value||'',
@@ -2876,7 +2898,9 @@ async function createLead() {
     survey_time: surveyTime,
     survey_eng:  surveyEng,
     status:      surveyDate ? 'Site Survey Scheduled' : 'New Lead',
-    follow_up_date: surveyDate,
+    follow_up_date: followupDate || surveyDate,
+    follow_up_time: followupTime,
+    follow_up_note: followupNote,
     lead_date:   document.getElementById('nl-lead-date').value||'',
     lead_time:   document.getElementById('nl-lead-time').value||'',
   };
@@ -2983,6 +3007,34 @@ async function buildNotifs() {
     apiGet('/api/leads')
   ]);
   var items = [];
+
+  // ── Follow-up Reminders ─────────────────────────────────────
+  if (allLeads) {
+    (allLeads.leads||[]).forEach(function(l) {
+      if (!l.follow_up_date) return;
+      var fuDT = new Date(l.follow_up_date + 'T' + (l.follow_up_time || '10:00'));
+      var diffHrs = (fuDT - now) / (1000 * 60 * 60);
+      if (diffHrs > 0 && diffHrs <= 24) {
+        var label = diffHrs < 1 ? Math.round(diffHrs*60)+' min' : Math.round(diffHrs)+' hr';
+        items.push({
+          icon: '📞',
+          urgent: true,
+          text: '<strong>Follow-up in '+label+'!</strong><br>'+h(l.name)+' · '+h(l.location)+
+                (l.follow_up_note ? '<br><span style="color:var(--blue);font-size:11px">📝 '+h(l.follow_up_note)+'</span>' : '')+
+                '<br><span style="color:var(--text-dim);font-size:11px">⏰ '+h(l.follow_up_date)+' '+(l.follow_up_time||'10:00')+'</span>',
+          time: l.follow_up_date
+        });
+      } else if (diffHrs > 24 && diffHrs <= 48) {
+        items.push({
+          icon: '📅',
+          urgent: false,
+          text: '<strong>Follow-up tomorrow</strong> — '+h(l.name)+
+                (l.follow_up_note ? '<br><span style="font-size:11px;color:var(--text-dim)">'+h(l.follow_up_note)+'</span>' : ''),
+          time: l.follow_up_date
+        });
+      }
+    });
+  }
 
   // ── 24hr Site Survey Reminders ──────────────────────────────
   var now = new Date();
