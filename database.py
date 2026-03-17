@@ -54,6 +54,8 @@ def init_db():
                 assigned_to INTEGER,
                 notes TEXT DEFAULT '',
                 follow_up_date TEXT DEFAULT '',
+                follow_up_time TEXT DEFAULT '',
+                follow_up_note TEXT DEFAULT '',
                 quoted_amount TEXT DEFAULT '',
                 survey_date TEXT DEFAULT '',
                 survey_time TEXT DEFAULT '',
@@ -148,7 +150,7 @@ def init_db():
                 _seed(conn, c)
             # Migrations — safely add new columns to existing databases
             existing_cols = [row[1] for row in c.execute("PRAGMA table_info(leads)").fetchall()]
-            for col in ['survey_date', 'survey_time', 'survey_eng', 'kseb_bill_file', 'quotation_file', 'site_photos', 'lead_date', 'lead_time']:
+            for col in ['survey_date', 'survey_time', 'survey_eng', 'kseb_bill_file', 'quotation_file', 'site_photos', 'lead_date', 'lead_time', 'follow_up_time', 'follow_up_note']:
                 if col not in existing_cols:
                     c.execute(f"ALTER TABLE leads ADD COLUMN {col} TEXT DEFAULT ''")
             conn.commit()
