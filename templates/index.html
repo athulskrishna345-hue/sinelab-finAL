@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#111218">
 <title>Sinelab CRM — Solar Sales & Service Platform</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
@@ -938,54 +942,114 @@ body {
 /* ===========================
    RESPONSIVE
    =========================== */
+/* ===========================
+   RESPONSIVE — ALL DEVICES
+   =========================== */
+
+/* ── PC / Large Desktop (1400px+) ── */
+@media (min-width: 1400px) {
+  :root { --sidebar-w: 260px; }
+  .page-wrap { padding: 28px 32px; }
+  .dash-stats { grid-template-columns: repeat(4, 1fr); }
+  .modal-box { max-width: 680px; }
+}
+
+/* ── Laptop / Desktop (900px - 1400px) ── */
+@media (max-width: 1400px) and (min-width: 900px) {
+  .dash-stats { grid-template-columns: repeat(4, 1fr); }
+}
+
 @media (max-width: 1200px) {
   .dash-stats { grid-template-columns: repeat(2, 1fr); }
   .dash-row { grid-template-columns: 1fr; }
 }
 
+/* ── iPad / Tablet (768px - 900px) ── */
 @media (max-width: 900px) {
-  .sidebar { transform: translateX(-100%); }
-  .sidebar.mobile-open { transform: translateX(0); }
+  .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; }
+  .sidebar.mobile-open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.4); }
   .sidebar-overlay { display: block; }
   .main { margin-left: 0; }
   .mobile-menu-btn { display: flex; }
-  .topbar { padding: 0 14px 0 56px; }
-  .search-wrap input { width: 120px; }
-  .dash-stats { grid-template-columns: repeat(2, 1fr); }
-  .detail-panel { width: 100%; right: 0; border-radius: 0; }
+  .topbar { padding: 0 16px 0 60px; }
+  .search-wrap input { width: 160px; }
+  .dash-stats { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .dash-row { grid-template-columns: 1fr; }
+  .detail-panel { width: 420px; }
+  .kanban-wrap {
+    display: flex !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 12px;
+    padding-bottom: 16px;
+  }
+  .k-col { min-width: 220px !important; max-width: 220px !important; flex-shrink: 0; }
 }
 
-/* ===========================
-   MOBILE — 600px and below
-   =========================== */
+/* ── iPad Pro / Large Tablet (768px - 900px) ── */
+@media (max-width: 900px) and (min-width: 768px) {
+  .modal-box { width: 90vw !important; max-width: 600px !important; }
+  .form-grid { grid-template-columns: 1fr 1fr; }
+  .page-wrap { padding: 18px 20px; }
+}
+
+/* ── Small Tablet / Large Phone (600px - 768px) ── */
+@media (max-width: 768px) and (min-width: 601px) {
+  .page-wrap { padding: 14px 16px; }
+  .dash-stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .data-table { min-width: 520px; font-size: 12px; }
+  .modal-box { width: 92vw !important; max-width: 520px !important; }
+  .form-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .detail-panel { width: 100%; border-radius: 0; }
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; }
+}
+
+/* ── Mobile (max 600px) — Android & iPhone ── */
 @media (max-width: 600px) {
 
-  /* Layout */
-  body { overflow: auto; }
-  .main { min-height: 100dvh; overflow: visible; }
-  .page-wrap { padding: 12px; overflow: visible; }
+  /* Base layout */
+  html { font-size: 13px; }
+  body { overflow-x: hidden; overflow-y: auto; }
+  .main { min-height: 100dvh; overflow-x: hidden; }
+  .page-wrap {
+    padding: 12px 12px 80px 12px;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
 
   /* Topbar */
-  .topbar { padding: 0 10px 0 52px; height: 52px; gap: 8px; }
-  .page-title { font-size: 15px; }
+  .topbar {
+    padding: 0 8px 0 52px;
+    height: 52px;
+    gap: 6px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .page-title { font-size: 14px; }
   .breadcrumb { display: none; }
-  .search-wrap { padding: 6px 10px; }
-  .search-wrap input { width: 100px; font-size: 12px; }
+  .search-wrap { padding: 5px 8px; flex: 1; max-width: 180px; }
+  .search-wrap input { width: 100%; font-size: 13px; }
   .topbar-btn span { display: none; }
+  .topbar-btn { padding: 7px 10px; }
   .notif-btn { width: 32px; height: 32px; }
 
-  /* Dashboard stats */
-  .dash-stats { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .stat-card { padding: 14px; }
-  .stat-val { font-size: 22px; }
-  .dash-row { grid-template-columns: 1fr; gap: 12px; }
+  /* Dashboard */
+  .dash-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card { padding: 12px; }
+  .stat-val { font-size: 20px; }
+  .stat-label { font-size: 11px; }
+  .dash-row { grid-template-columns: 1fr; gap: 10px; }
+  .dash-card { padding: 14px; }
+  .funnel-track { height: 16px; }
 
-  /* Page toolbar — stack filters vertically */
+  /* Page toolbar */
   .page-toolbar {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
-    margin-bottom: 14px;
+    gap: 8px;
+    margin-bottom: 12px;
   }
   .filters {
     display: grid;
@@ -995,7 +1059,7 @@ body {
   .filter-sel {
     width: 100%;
     font-size: 12px;
-    padding: 8px 10px;
+    padding: 8px 8px;
   }
   .toolbar-right {
     display: flex;
@@ -1004,92 +1068,119 @@ body {
     justify-content: flex-end;
   }
   .toolbar-right .btn-primary,
-  .toolbar-right .btn-outline { font-size: 12px; padding: 7px 12px; }
+  .toolbar-right .btn-outline { font-size: 12px; padding: 7px 10px; }
   .result-count { display: none; }
-
-  /* Table — horizontal scroll container */
-  .table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-  }
-  .data-table { min-width: 560px; font-size: 12px; }
-  .data-table th, .data-table td { padding: 10px 10px; }
-  .td-sub { display: none; }
-
-  /* Kanban — horizontal scroll on mobile */
-  .kanban-wrap {
-    display: flex !important;
-    flex-direction: row;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    gap: 10px;
-    padding-bottom: 12px;
-  }
-  .k-col {
-    min-width: 200px !important;
-    max-width: 200px !important;
-    flex-shrink: 0;
-  }
-  .k-col-title { font-size: 12px; }
-  .k-card { padding: 10px; }
-  .k-card-name { font-size: 12px; }
-  .k-card-loc { font-size: 10px; }
-
-  /* Detail panel — full screen */
-  .detail-panel {
-    width: 100%;
-    height: 100dvh;
-    top: 0; right: 0;
-    border-radius: 0;
-    overflow-y: auto;
-  }
-
-  /* Forms */
-  .form-grid { grid-template-columns: 1fr !important; gap: 12px; }
-  .form-group.span2 { grid-column: 1 !important; }
-  .f-input, .f-select, .f-textarea {
-    font-size: 16px !important; /* prevents zoom on iOS */
-    padding: 10px 12px;
-  }
-
-  /* Modals */
-  #modal-overlay .modal-box,
-  #import-box {
-    width: 95vw !important;
-    max-width: 95vw !important;
-    max-height: 90dvh;
-    overflow-y: auto;
-    border-radius: 16px;
-  }
-
-  /* Dashboard cards */
-  .dash-card { padding: 14px; }
-  .funnel-track { height: 18px; }
-
-  /* Project / ticket cards */
-  .proj-card, .ticket-card { padding: 14px; }
-
-  /* Tab strip — scrollable */
   .tab-strip {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     white-space: nowrap;
     display: flex;
     flex-wrap: nowrap;
+    scrollbar-width: none;
   }
-  .tab { padding: 6px 12px; font-size: 12px; white-space: nowrap; }
+  .tab-strip::-webkit-scrollbar { display: none; }
+  .tab { padding: 6px 12px; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
 
-  /* Reports grid */
+  /* Table */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    margin: 0 -1px;
+  }
+  .data-table { min-width: 540px; font-size: 12px; width: 100%; }
+  .data-table th, .data-table td { padding: 9px 8px; }
+  .td-sub { display: none; }
+  .td-name { font-size: 12px; }
+
+  /* Kanban */
+  .kanban-wrap {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    padding-bottom: 10px;
+    scrollbar-width: thin;
+  }
+  .k-col {
+    min-width: 185px !important;
+    max-width: 185px !important;
+    flex-shrink: 0;
+  }
+  .k-col-title { font-size: 11px; }
+  .k-card { padding: 9px; }
+  .k-card-name { font-size: 12px; }
+  .k-card-loc { font-size: 10px; }
+
+  /* Detail panel — full screen slide up */
+  .detail-panel {
+    width: 100% !important;
+    height: 100dvh !important;
+    top: 0 !important;
+    right: 0 !important;
+    border-radius: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Forms — prevent iOS zoom on inputs */
+  .form-grid { grid-template-columns: 1fr !important; gap: 10px; }
+  .form-group.span2 { grid-column: 1 !important; }
+  .f-input, .f-select, .f-textarea, .pf-input, .pf-select, .pf-textarea {
+    font-size: 16px !important;
+    padding: 10px 12px;
+  }
+  .f-label, .pf-label { font-size: 12px; }
+
+  /* Modals */
+  #modal-overlay .modal-box,
+  #import-box {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    max-height: 88dvh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 16px !important;
+    margin: auto;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+  }
+
+  /* Notification panel */
+  .notif-panel {
+    width: calc(100vw - 20px) !important;
+    right: 10px !important;
+    left: 10px !important;
+    max-height: 70dvh;
+    overflow-y: auto;
+  }
+
+  /* Tickets grid */
+  #tickets-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .ticket-card { padding: 12px; }
+  .tc-foot { flex-wrap: wrap; gap: 6px; }
+
+  /* Project cards */
+  .proj-card { padding: 12px; }
+
+  /* Reports */
   .reports-grid { grid-template-columns: 1fr !important; }
+  .report-card { padding: 14px; }
 
-  /* Bottom nav bar for mobile */
+  /* Customers grid */
+  .cust-grid { grid-template-columns: 1fr !important; }
+
+  /* Bottom nav */
   .mobile-bottom-nav {
     display: flex;
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    height: 58px;
+    height: 56px;
     background: var(--surface);
     border-top: 1px solid var(--border);
     z-index: 250;
@@ -1103,7 +1194,7 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    padding: 6px 8px;
+    padding: 5px 6px;
     border-radius: 8px;
     text-decoration: none;
     color: var(--text-dim);
@@ -1111,35 +1202,80 @@ body {
     font-weight: 500;
     flex: 1;
     transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
   }
   .mobile-bottom-nav a svg { width: 20px; height: 20px; fill: currentColor; }
   .mobile-bottom-nav a.active { color: var(--sun); }
-  .mobile-bottom-nav a span { font-size: 10px; }
-
-  /* Add bottom padding so content doesn't hide behind bottom nav */
-  .page-wrap { padding-bottom: 72px; }
 
   /* Sidebar overlay */
   .sidebar { z-index: 400; }
   .sidebar-overlay {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(2px);
     z-index: 390;
     display: none;
   }
   .sidebar-overlay.show { display: block; }
 
-  /* Customer cards */
-  .cust-grid { grid-template-columns: 1fr !important; }
+  /* SLA alerts */
+  .sla-row { flex-wrap: wrap; gap: 8px; }
+  .sla-action { width: 100%; display: flex; gap: 6px; }
 
-  /* Mass delete button */
-  #mass-delete-btn { font-size: 12px; padding: 6px 10px; }
+  /* Buttons */
+  .btn-sm { font-size: 11px; padding: 5px 8px; }
+  #mass-delete-btn { font-size: 11px; padding: 6px 10px; }
+
+  /* Panel actions */
+  .pf-actions { flex-wrap: wrap; gap: 6px; }
+  .pf-actions button { flex: 1; min-width: 80px; font-size: 12px; }
 }
 
-/* Safe area for notch phones (iOS) */
-@supports (padding-top: env(safe-area-inset-top)) {
-  .topbar { padding-top: env(safe-area-inset-top); height: calc(52px + env(safe-area-inset-top)); }
-  .mobile-bottom-nav { padding-bottom: env(safe-area-inset-bottom); height: calc(58px + env(safe-area-inset-bottom)); }
+/* ── iOS Safe Area (notch/home bar) ── */
+@supports (padding: env(safe-area-inset-top)) {
+  .topbar {
+    padding-top: max(0px, env(safe-area-inset-top));
+    height: calc(52px + env(safe-area-inset-top));
+  }
+  @media (min-width: 601px) {
+    .topbar { height: var(--topbar-h); padding-top: 0; }
+  }
+  .mobile-bottom-nav {
+    height: calc(56px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .page-wrap {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ── Touch devices — remove hover flicker ── */
+@media (hover: none) and (pointer: coarse) {
+  .nav-link:hover { background: none; }
+  .btn-primary:hover { transform: none; }
+  .k-card:hover { transform: none; box-shadow: none; }
+  .ticket-card:hover { transform: none; }
+  .search-result-item:hover { background: var(--surface3); }
+  * { -webkit-tap-highlight-color: transparent; }
+}
+
+/* ── iPad landscape specific ── */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+  .detail-panel { width: 50%; }
+  .dash-stats { grid-template-columns: repeat(4, 1fr); }
+  .kanban-wrap {
+    display: flex !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .k-col { min-width: 200px !important; max-width: 200px !important; }
+}
+
+/* ── iPad portrait ── */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+  .detail-panel { width: 80%; }
+  .dash-stats { grid-template-columns: repeat(2, 1fr); }
+  .form-grid { grid-template-columns: 1fr 1fr; }
 }
 
 
