@@ -1765,6 +1765,18 @@ function showToast(msg, type) {
 }
 
 // ---- SAFE HTML ESCAPE ----
+// Format datetime string as IST (stored times are already IST from backend)
+function fmtTime(str) {
+  if (!str) return '';
+  // Already stored as IST from backend, just display nicely
+  var s = (str||'').replace('T',' ').slice(0,16);
+  return s;
+}
+function fmtDate(str) {
+  if (!str) return '';
+  return (str||'').slice(0,10);
+}
+
 function h(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
@@ -1837,7 +1849,7 @@ async function renderDashboard() {
   }).join('');
 
   document.getElementById('activity-feed').innerHTML = (data.activity||[]).slice(0,7).map(function(a){
-    return '<div class="activity-item"><div class="act-dot" style="background:var(--sun)"></div><div><div class="act-text">'+h(a.action)+'</div><div class="act-time">'+h(a.user_name)+' · '+h((a.created_at||'').slice(0,16).replace('T',' '))+'</div></div></div>';
+    return '<div class="activity-item"><div class="act-dot" style="background:var(--sun)"></div><div><div class="act-text">'+h(a.action)+'</div><div class="act-time">'+h(a.user_name)+' · '+fmtTime(a.created_at)+'</div></div></div>';
   }).join('');
 
   const dt = data.dept_tasks;
