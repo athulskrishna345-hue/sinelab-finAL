@@ -172,7 +172,6 @@ def upload_lead_file(lid):
     return jsonify({'ok': True, 'filename': filename, 'lead': lead})
 
 @app.route('/api/files/<filename>', methods=['GET'])
-@require_auth
 def serve_file(filename):
     safe = werkzeug.utils.secure_filename(filename)
     path = os.path.join(UPLOAD_DIR, safe)
