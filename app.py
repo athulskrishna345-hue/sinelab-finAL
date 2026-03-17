@@ -34,10 +34,15 @@ def require_auth(f):
         return f(*a, **kw)
     return wrap
 
+def ist_now():
+    from datetime import timezone, timedelta
+    ist = timezone(timedelta(hours=5, minutes=30))
+    return datetime.now(ist).strftime('%Y-%m-%d %H:%M:%S')
+
 def log(user, action, etype='', eid=''):
     try:
         conn = get_db()
-        conn.execute("INSERT INTO activity (user_name,action,entity_type,entity_id) VALUES (?,?,?,?)", (user,action,etype,str(eid)))
+        conn.execute("INSERT INTO activity (user_name,action,entity_type,entity_id,created_at) VALUES (?,?,?,?,?)", (user,action,etype,str(eid),ist_now()))
         conn.commit(); conn.close()
     except: pass
 
