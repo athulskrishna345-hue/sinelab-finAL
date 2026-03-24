@@ -5,8 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sinelab CRM">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#111218">
+<meta name="description" content="Sinelab Solar CRM — Sales & Service Platform">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
 <title>Sinelab CRM — Solar Sales & Service Platform</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
@@ -630,44 +634,52 @@ body {
    KANBAN
    =========================== */
 .kanban-wrap {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 14px;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: visible;
   padding-bottom: 16px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
 }
 .k-col {
-  min-width: 0;
+  min-width: 200px;
+  max-width: 200px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
 }
 .k-col-head {
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
 }
-.k-col-title { font-size: 13px; font-weight: 700; }
+.k-col-title { font-size: 12px; font-weight: 700; }
 .k-col-count {
   font-size: 11px; font-weight: 700;
   background: var(--surface3);
   padding: 2px 7px; border-radius: 10px;
   color: var(--text-dim);
 }
-.k-cards { padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 60px; overflow-y: hidden; }
+.k-cards { padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 60px; overflow-y: auto; max-height: calc(100vh - 220px); }
 .k-card {
   background: var(--surface2);
   border: 1px solid var(--border);
-  border-radius: 8px; padding: 12px;
+  border-radius: 8px; padding: 10px;
   cursor: pointer;
   transition: all 0.15s;
 }
 .k-card:hover { border-color: var(--border2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-.k-card-name { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
-.k-card-loc { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
+.k-card-name { font-size: 12px; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k-card-loc { font-size: 10px; color: var(--text-dim); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .k-card-foot { display: flex; align-items: center; justify-content: space-between; }
-.k-kw { font-size: 12px; font-weight: 700; color: var(--sun); }
+.k-kw { font-size: 11px; font-weight: 700; color: var(--sun); }
 
 /* ===========================
    SERVICE TICKETS
@@ -983,8 +995,7 @@ body {
     gap: 12px;
     padding-bottom: 16px;
   }
-  .k-col { min-width: 220px !important; max-width: 220px !important; flex-shrink: 0; }
-}
+  .k-col { min-width: 220px !important; max-width: 220px !important; flex-shrink: 0; }}
 
 /* ── iPad Pro / Large Tablet (768px - 900px) ── */
 @media (max-width: 900px) and (min-width: 768px) {
@@ -1003,6 +1014,7 @@ body {
   .form-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
   .detail-panel { width: 100%; border-radius: 0; }
   .filters { display: flex; flex-wrap: wrap; gap: 6px; }
+  .k-col { min-width: 200px !important; max-width: 200px !important; }
 }
 
 /* ── Mobile (max 600px) — Android & iPhone ── */
@@ -1096,23 +1108,16 @@ body {
 
   /* Kanban */
   .kanban-wrap {
-    display: flex !important;
-    flex-direction: row !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
     gap: 8px;
     padding-bottom: 10px;
-    scrollbar-width: thin;
   }
   .k-col {
-    min-width: 185px !important;
-    max-width: 185px !important;
-    flex-shrink: 0;
+    min-width: 175px !important;
+    max-width: 175px !important;
   }
   .k-col-title { font-size: 11px; }
   .k-card { padding: 9px; }
-  .k-card-name { font-size: 12px; }
-  .k-card-loc { font-size: 10px; }
+  .k-cards { max-height: calc(100vh - 240px); }
 
   /* Detail panel — full screen slide up */
   .detail-panel {
@@ -1259,23 +1264,27 @@ body {
   * { -webkit-tap-highlight-color: transparent; }
 }
 
-/* ── iPad landscape specific ── */
-@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
-  .detail-panel { width: 50%; }
-  .dash-stats { grid-template-columns: repeat(4, 1fr); }
-  .kanban-wrap {
-    display: flex !important;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .k-col { min-width: 200px !important; max-width: 200px !important; }
-}
-
 /* ── iPad portrait ── */
 @media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
   .detail-panel { width: 80%; }
   .dash-stats { grid-template-columns: repeat(2, 1fr); }
   .form-grid { grid-template-columns: 1fr 1fr; }
+  .k-col { min-width: 220px !important; max-width: 220px !important; }
+  .k-cards { max-height: calc(100vh - 260px); }
+  .k-card { padding: 12px; }
+  .k-card-name { font-size: 13px; white-space: normal; }
+  .k-card-loc { font-size: 11px; white-space: normal; }
+  .k-kw { font-size: 12px; }
+  .k-status-select { font-size: 12px; }
+}
+
+/* ── iPad landscape specific ── */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+  .detail-panel { width: 50%; }
+  .dash-stats { grid-template-columns: repeat(4, 1fr); }
+  .k-col { min-width: 210px !important; max-width: 210px !important; }
+  .k-cards { max-height: calc(100vh - 200px); }
+  .k-card-name { white-space: normal; }
 }
 
 
@@ -3465,6 +3474,68 @@ function downloadTemplate() {
 }
 </script>
 
+<!-- PWA Install Banner -->
+<div id="pwa-banner" style="display:none;position:fixed;bottom:70px;left:50%;transform:translateX(-50%);z-index:999;background:var(--surface);border:1px solid var(--sun);border-radius:16px;padding:14px 18px;box-shadow:0 8px 32px rgba(0,0,0,0.5);display:none;align-items:center;gap:14px;max-width:340px;width:90vw">
+  <span style="font-size:28px">☀️</span>
+  <div style="flex:1">
+    <div style="font-size:13px;font-weight:700;color:var(--text)">Install Sinelab CRM</div>
+    <div style="font-size:11px;color:var(--text-dim);margin-top:2px">Add to home screen for app-like experience</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <button onclick="installPWA()" style="background:var(--sun);color:var(--earth);border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">Install</button>
+    <button onclick="dismissPWA()" style="background:none;color:var(--text-dim);border:none;font-size:11px;cursor:pointer">Not now</button>
+  </div>
+</div>
+
+<script>
+// ── PWA Service Worker ──────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+      console.log('SW registered');
+    }).catch(function(err) {
+      console.log('SW error:', err);
+    });
+  });
+}
+
+// ── PWA Install Prompt ──────────────────────────────────────
+var deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+  var banner = document.getElementById('pwa-banner');
+  if (banner && localStorage.getItem('pwa_dismissed') !== '1') {
+    banner.style.display = 'flex';
+  }
+});
+
+function installPWA() {
+  var banner = document.getElementById('pwa-banner');
+  if (banner) banner.style.display = 'none';
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function(result) {
+      if (result.outcome === 'accepted') {
+        showToast('Sinelab CRM installed! ✅', 'success');
+      }
+      deferredPrompt = null;
+    });
+  }
+}
+
+function dismissPWA() {
+  var banner = document.getElementById('pwa-banner');
+  if (banner) banner.style.display = 'none';
+  localStorage.setItem('pwa_dismissed', '1');
+}
+
+window.addEventListener('appinstalled', function() {
+  var banner = document.getElementById('pwa-banner');
+  if (banner) banner.style.display = 'none';
+  showToast('App installed successfully! 🎉', 'success');
+});
+</script>
 
 <!-- EXCEL IMPORT MODAL -->
 <div class="modal-overlay" id="import-overlay" onclick="closeImportModal()"></div>
