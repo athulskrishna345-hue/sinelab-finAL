@@ -1589,6 +1589,17 @@ body {
           <select class="filter-sel" id="f-location" onchange="renderLeads()">
             <option value="">All Locations</option>
             <option>Kochi</option><option>Palakkad</option>
+            <optgroup label="── Kochi Areas ──">
+              <option>Kochi - Aluva</option><option>Kochi - Edapally</option>
+              <option>Kochi - Palarivattom</option><option>Kochi - Kakkanad</option>
+              <option>Kochi - Kaloor</option><option>Kochi - Vyttila</option>
+              <option>Kochi - Kadavanthra</option><option>Kochi - Marine Drive</option>
+              <option>Kochi - Fort Kochi</option><option>Kochi - Mattancherry</option>
+              <option>Kochi - Ernakulam</option><option>Kochi - Tripunithura</option>
+              <option>Kochi - Kalamassery</option><option>Kochi - Thrikkakara</option>
+              <option>Kochi - Maradu</option><option>Kochi - Panampilly Nagar</option>
+              <option>Kochi - Infopark</option><option>Kochi - Vytilla</option>
+            </optgroup>
           </select>
         </div>
         <div class="toolbar-right">
@@ -2644,6 +2655,83 @@ async function updateLeadStatus(id, status) {
   openLeadPanel(data.lead);
 }
 
+// ── Kochi Areas Data ────────────────────────────────────────
+var KOCHI_AREAS = [
+  'Aluva','Edapally','Palarivattom','Kakkanad','Kaloor','Vyttila','Kadavanthra',
+  'Marine Drive','Fort Kochi','Mattancherry','Ernakulam','Tripunithura','Kalamassery',
+  'Thrikkakara','Thripunithura','Maradu','Eloor','Perumbavoor','Angamaly',
+  'North Paravur','Cherai','Vypeen','Willingdon Island','Thevara','Panampilly Nagar',
+  'Girinagar','Vytilla','Thammanam','Elamakkara','Gandhinagar','Ravipuram',
+  'Chambakkara','Vazhakkala','Vennala','Chottanikkara','Eroor','Njarakkal',
+  'Cheranalloor','Vaduthala','Chullickal','Palluruthy','Kumbalangi','Mundamveli',
+  'Infopark','Technopark Kakkanad','Seaport Airport Road','Irimpanam',
+  'Mulavukad','Vallarpadam','Aroor','Kunnukara','Manjapra','Okkal',
+  'Piravom','Muvattupuzha','Kothamangalam','Kolenchery','Kuruppampady',
+  'Payamkadavu','Chendamangalam','Puthenvelikkara','Nettoor','Kundanoor',
+  'Petta','Harbour Road','MG Road','Banerjee Road','Jos Junction',
+  'Atlantis','High Court Junction','Boat Jetty','Sahodaran Ayyappan Road'
+].sort();
+
+function onLocationChange() {
+  var loc = document.getElementById('nl-loc').value;
+  var grp = document.getElementById('nl-area-group');
+  if (grp) grp.style.display = loc === 'Kochi' ? 'block' : 'none';
+  if (loc !== 'Kochi') {
+    var hidden = document.getElementById('nl-area');
+    if (hidden) hidden.value = '';
+    var sel = document.getElementById('nl-area-selected');
+    if (sel) sel.style.display = 'none';
+    var search = document.getElementById('nl-area-search');
+    if (search) search.value = '';
+    var list = document.getElementById('nl-area-list');
+    if (list) list.style.display = 'none';
+  }
+}
+
+function filterKochiAreas() {
+  var q = (document.getElementById('nl-area-search').value || '').toLowerCase();
+  var list = document.getElementById('nl-area-list');
+  if (!list) return;
+  var filtered = q ? KOCHI_AREAS.filter(function(a){ return a.toLowerCase().includes(q); }) : KOCHI_AREAS;
+  list.style.display = filtered.length ? 'block' : 'none';
+  list.innerHTML = filtered.map(function(a){
+    return '<div onclick="selectKochiArea(\''+a+'\')" style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);transition:background 0.1s" onmouseover="this.style.background=\'var(--surface3)\'" onmouseout="this.style.background=\'\'">📍 '+a+'</div>';
+  }).join('');
+}
+
+function selectKochiArea(area) {
+  var hidden = document.getElementById('nl-area');
+  if (hidden) hidden.value = area;
+  var search = document.getElementById('nl-area-search');
+  if (search) search.value = '';
+  var list = document.getElementById('nl-area-list');
+  if (list) list.style.display = 'none';
+  var sel = document.getElementById('nl-area-selected');
+  if (sel) {
+    sel.style.display = 'flex';
+    sel.innerHTML = '<span>📍 <strong>'+area+'</strong></span><span onclick="clearKochiArea()" style="cursor:pointer;color:var(--text-dim);font-size:16px;line-height:1">✕</span>';
+  }
+}
+
+function clearKochiArea() {
+  var hidden = document.getElementById('nl-area');
+  if (hidden) hidden.value = '';
+  var sel = document.getElementById('nl-area-selected');
+  if (sel) sel.style.display = 'none';
+}
+
+// Show area dropdown on input focus
+document.addEventListener('click', function(e) {
+  var search = document.getElementById('nl-area-search');
+  var list = document.getElementById('nl-area-list');
+  if (!search || !list) return;
+  if (e.target === search) {
+    filterKochiAreas();
+  } else if (!list.contains(e.target)) {
+    list.style.display = 'none';
+  }
+});
+
 function onLeadStatusChange(id, status) {
   var lostGroup = document.getElementById('lost-reason-group');
   if (lostGroup) lostGroup.style.display = status === 'Lost / Dropped' ? 'block' : 'none';
@@ -2880,7 +2968,17 @@ function openNewLeadModal() {
     '<div class="form-group"><label class="f-label">⏰ Lead Time</label><input class="f-input" id="nl-lead-time" type="time" value="'+nowTime+'"></div>'+
     '<div class="form-group"><label class="f-label">Lead Source <span class="required-star">*</span></label><select class="f-select" id="nl-source"><option value="">Select</option><option>Meta Ads</option><option>Google Ads</option><option>WhatsApp</option><option>Website</option><option>Referral</option><option>Walk-in</option><option>Call</option></select></div>'+
     '<div class="form-group"><label class="f-label">Telecaller</label><select class="f-select" id="nl-tc"><option>Tele1</option><option>Tele2</option><option>Tele3</option></select></div>'+
-    '<div class="form-group"><label class="f-label">Location</label><select class="f-select" id="nl-loc"><option value="">Select Location</option><option>Kochi</option><option>Palakkad</option><option>Other</option></select></div>'+
+    '<div class="form-group"><label class="f-label">Location</label><select class="f-select" id="nl-loc" onchange="onLocationChange()"><option value="">Select Location</option><option>Kochi</option><option>Palakkad</option><option>Other</option></select></div>'+
+    '<div class="form-group" id="nl-area-group" style="display:none">'+
+      '<label class="f-label">📍 Area in Kochi</label>'+
+      '<div style="position:relative">'+
+        '<input class="f-input" id="nl-area-search" placeholder="Search area... e.g. Edapally" oninput="filterKochiAreas()" autocomplete="off" style="padding-right:32px">'+
+        '<span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none">🔍</span>'+
+      '</div>'+
+      '<div id="nl-area-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-top:4px;background:var(--surface2);display:none"></div>'+
+      '<input type="hidden" id="nl-area" value="">'+
+      '<div id="nl-area-selected" style="display:none;margin-top:6px;padding:6px 10px;background:var(--sun-light);border:1px solid var(--sun-mid);border-radius:6px;font-size:12px;color:var(--sun);display:flex;align-items:center;justify-content:space-between"></div>'+
+    '</div>'+
     '<div class="form-group"><label class="f-label">Customer Type</label><select class="f-select" id="nl-type"><option>Residential</option><option>Commercial</option><option>Industrial</option></select></div>'+
     '<div class="form-group"><label class="f-label">Monthly EB Bill (₹)</label><input class="f-input" id="nl-bill" placeholder="e.g. 5000" type="number"></div>'+
     '<div class="form-group"><label class="f-label">Phase</label><select class="f-select" id="nl-phase"><option value="">Select</option><option>Single Phase</option><option>3-Phase</option></select></div>'+
@@ -3029,7 +3127,11 @@ async function createLead() {
   const followupNote = document.getElementById('nl-followup-note').value || '';
   const payload = {
     name, phone, source,
-    location:    document.getElementById('nl-loc').value||'',
+    location:    (function(){
+      var loc = document.getElementById('nl-loc').value||'';
+      var area = (document.getElementById('nl-area')||{value:''}).value;
+      return area ? loc + ' - ' + area : loc;
+    })(),
     type:        document.getElementById('nl-type').value,
     bill:        document.getElementById('nl-bill').value,
     phase:       document.getElementById('nl-phase').value,
