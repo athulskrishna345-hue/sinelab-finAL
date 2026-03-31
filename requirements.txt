@@ -1,2 +1,5 @@
 flask>=3.0.0
 gunicorn
+werkzeug>=3.0.0
+pywebpush
+apscheduler
