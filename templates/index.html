@@ -3673,4 +3673,54 @@ window.addEventListener('appinstalled', function() {
         <strong style="color:var(--text)">Preview:</strong> <span id="import-preview-text">—</span>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn-outl
+                <button class="btn-outline" onclick="importGoBack()">← Back</button>
+        <button class="btn-primary" onclick="runImport()">✓ Import Leads</button>
+      </div>
+    </div>
+    <!-- Step 3: Result -->
+    <div id="import-step3" style="display:none;text-align:center;padding:20px 0">
+      <div id="import-result-icon" style="font-size:48px;margin-bottom:12px"></div>
+      <div id="import-result-title" style="font-size:18px;font-weight:700;margin-bottom:6px"></div>
+      <div id="import-result-sub" style="font-size:13px;color:var(--text-dim);margin-bottom:16px"></div>
+      <div id="import-result-details" style="margin-bottom:20px;text-align:left"></div>
+      <button class="btn-primary" onclick="closeImportModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function initPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const keyRes = await apiGet('/api/push/vapid-public-key');
+    if (!keyRes || !keyRes.key || !keyRes.enabled) return;
+    const reg = await navigator.serviceWorker.register('/static/sw.js');
+    await navigator.serviceWorker.ready;
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) { await apiPost('/api/push/subscribe', existing.toJSON()); return; }
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(keyRes.key)
+    });
+    await apiPost('/api/push/subscribe', sub.toJSON());
+    showToast('Notifications enabled ✓', 'success');
+  } catch(e) { console.log('Push setup failed:', e); }
+}
+function urlBase64ToUint8Array(b) {
+  const p = '='.repeat((4 - b.length % 4) % 4);
+  const d = window.atob((b + p).replace(/-/g,'+').replace(/_/g,'/'));
+  const o = new Uint8Array(d.length);
+  for (let i = 0; i < d.length; i++) o[i] = d.charCodeAt(i);
+  return o;
+}
+(function() {
+  var _o = window.showAppShell;
+  window.showAppShell = function() { _o.apply(this, arguments); setTimeout(initPush, 2000); };
+})();
+</script>
+
+</body>
+</html>
+
