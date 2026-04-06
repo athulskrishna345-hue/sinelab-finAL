@@ -59,7 +59,7 @@ body {
   color: var(--text);
   display: flex;
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 /* ---- SCROLLBAR ---- */
@@ -258,7 +258,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 /* ===========================
@@ -1362,28 +1362,6 @@ body {
 .login-creds strong { color: var(--text-mid); }
 #app-shell { display: none; width: 100%; min-height: 100vh; }
 </style>
-<style>
-body { overflow-x: hidden !important; }
-.main { overflow-x: hidden !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
-.page-wrap { -webkit-overflow-scrolling: touch; touch-action: pan-y; }
-.kanban-wrap { -webkit-overflow-scrolling: touch; touch-action: pan-x; }
-.reports-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap: 16px; }
-.report-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
-.report-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-.report-sub { font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
-.report-metric { font-size: 36px; font-weight: 700; }
-.report-rows { display: flex; flex-direction: column; gap: 10px; }
-.report-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-mid); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-.report-row:last-child { border-bottom: none; padding-bottom: 0; }
-@media (max-width: 900px) {
-  button, a, .tab, .nav-link, .k-card { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-  input, select, textarea { font-size: 16px !important; }
-}
-@media (max-width: 600px) {
-  .main { overflow-y: scroll !important; }
-  .page-wrap { padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important; }
-}
-</style>
 </head>
 
 <body>
@@ -2035,37 +2013,11 @@ function updateBadges() {
 // ============================================================
 //  DASHBOARD
 // ============================================================
-
-// ── Live Dashboard Sync ──────────────────────────────────────
-async function refreshDashboard() {
-  // Always refresh sidebar badges
-  try {
-    const d = await apiGet('/api/dashboard');
-    if (!d || !d.stats) return;
-    var el;
-    el = document.getElementById('nb-leads');    if(el) el.textContent = d.stats.leads_total || 0;
-    el = document.getElementById('nb-projects'); if(el) el.textContent = d.stats.active_projects || 0;
-    el = document.getElementById('nb-service');  if(el) el.textContent = d.stats.open_tickets || 0;
-    var dot = document.getElementById('notif-dot');
-    if (dot) { if((d.stats.high_tickets||0)>0) dot.classList.add('show'); else dot.classList.remove('show'); }
-    // If on dashboard, do full re-render
-    if (currentPage === 'dashboard') renderDashboard();
-  } catch(e) {}
-}
-
-// Auto-refresh every 30 seconds
-setInterval(function() {
-  if (currentPage === 'dashboard') renderDashboard();
-  else refreshDashboard();
-}, 30000);
-
 async function renderDashboard() {
   const data = await apiGet('/api/dashboard');
-  if (!data) { console.error('Dashboard API failed'); return; }
-
-  // data.stats contains all counters, data.funnel contains pipeline
-  const s = data.stats || {};
-  const f = data.funnel || {};
+  if (!data) return;
+  const s = data.stats;
+  const f = data.funnel;
 
   document.getElementById('dash-stats').innerHTML =
     '<div class="stat-card"><div class="stat-accent" style="background:var(--blue)"></div><div class="stat-icon">◈</div><div class="stat-label">Total Leads</div><div class="stat-value" style="color:var(--blue)">'+s.leads_total+'</div><div class="stat-delta" style="color:var(--blue)">'+s.leads_new+' new / uncontacted</div></div>' +
@@ -2091,7 +2043,7 @@ async function renderDashboard() {
     return '<div class="activity-item"><div class="act-dot" style="background:var(--sun)"></div><div><div class="act-text">'+h(a.action)+'</div><div class="act-time">'+h(a.user_name)+' · '+fmtTime(a.created_at)+'</div></div></div>';
   }).join('');
 
-  const dt = data.dept_tasks || {};
+  const dt = data.dept_tasks;
   const depts = [
     { dept:'Telecaller',     n:dt.telecaller,     label:'leads to contact' },
     { dept:'Sales Engineer', n:dt.sales_engineer, label:'surveys scheduled' },
@@ -2497,10 +2449,8 @@ async function renderCustomers() {
 //  REPORTS
 // ============================================================
 async function renderReports() {
-  var rg = document.getElementById('reports-grid');
-  if(rg) rg.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-dim)">⏳ Loading reports...</div>';
   const data = await apiGet('/api/reports');
-  if (!data) { if(rg) rg.innerHTML='<div style="text-align:center;padding:40px;color:var(--red)">⚠️ Could not load reports.</div>'; return; }
+  if (!data) return;
 
   const n = data.total_leads || 1;
   const cr = n > 0 ? Math.round(data.confirmed/n*100) : 0;
@@ -2635,7 +2585,7 @@ function openLeadPanel(l) {
         '<div style="display:flex;align-items:center;gap:8px"><span>📄</span><span style="font-size:13px;font-weight:600">KSEB Bill</span>'+
         (l.kseb_bill_file ? '<span style="font-size:11px;color:var(--green)">✓ Uploaded</span>' : '<span style="font-size:11px;color:var(--text-dim)">Not attached</span>')+'</div>'+
         '<div style="display:flex;gap:6px">'+
-          (l.kseb_bill_file ? '<a href="/api/uploads/'+h(l.kseb_bill_file)+'?token='+encodeURIComponent(localStorage.getItem(\'snl_token\')||\'\')+\'" target="_blank" class="btn-sm ghost" onclick="event.stopPropagation()">👁 View</a>' : '')+
+          (l.kseb_bill_file ? '<a href="/api/files/'+h(l.kseb_bill_file)+'" target="_blank" class="btn-sm ghost" onclick="event.stopPropagation()">👁 View</a>' : '')+
           '<button class="btn-sm ghost" style="color:var(--sun)" onclick="event.stopPropagation();attachFileToLead('+l.id+',\'kseb_bill\')">'+(l.kseb_bill_file?'🔄 Replace':'📎 Attach')+'</button>'+
         '</div>'+
       '</div>'+
@@ -2643,7 +2593,7 @@ function openLeadPanel(l) {
         '<div style="display:flex;align-items:center;gap:8px"><span>📋</span><span style="font-size:13px;font-weight:600">Quotation</span>'+
         (l.quotation_file ? '<span style="font-size:11px;color:var(--green)">✓ Uploaded</span>' : '<span style="font-size:11px;color:var(--text-dim)">Not attached</span>')+'</div>'+
         '<div style="display:flex;gap:6px">'+
-          (l.quotation_file ? '<a href="/api/uploads/'+h(l.quotation_file)+'?token='+encodeURIComponent(localStorage.getItem(\'snl_token\')||\'\')+\'" target="_blank" class="btn-sm ghost" onclick="event.stopPropagation()">👁 View</a>' : '')+
+          (l.quotation_file ? '<a href="/api/files/'+h(l.quotation_file)+'" target="_blank" class="btn-sm ghost" onclick="event.stopPropagation()">👁 View</a>' : '')+
           '<button class="btn-sm ghost" style="color:var(--sun)" onclick="event.stopPropagation();attachFileToLead('+l.id+',\'quotation\')">'+(l.quotation_file?'🔄 Replace':'📎 Attach')+'</button>'+
         '</div>'+
       '</div>'+
@@ -2652,8 +2602,8 @@ function openLeadPanel(l) {
         var photos = [];
         try { photos = JSON.parse(l.site_photos||'[]'); } catch(e){}
         var thumbs = photos.map(function(p,i){
-          return '<a href="/api/uploads/'+h(p)+'?token='+encodeURIComponent(localStorage.getItem(\'snl_token\')||\'\')+\'" target="_blank" onclick="event.stopPropagation()" title="Photo '+(i+1)+'">'+
-            '<img src="/api/uploads/'+h(p)+'?token='+encodeURIComponent(localStorage.getItem(\'snl_token\')||\'\')+\'" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border2)" onerror="this.style.display=\'none\'">'+
+          return '<a href="/api/files/'+h(p)+'" target="_blank" onclick="event.stopPropagation()" title="Photo '+(i+1)+'">'+
+            '<img src="/api/files/'+h(p)+'" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border2)" onerror="this.style.display=\'none\'">'+
           '</a>';
         }).join('');
         return '<div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">'+
@@ -2699,10 +2649,9 @@ async function updateLeadStatus(id, status) {
   const data = await apiPut('/api/leads/'+id, { status });
   if (!data || !data.lead) return;
   showToast('Status updated: '+status, 'success');
-  refreshDashboard();
   if (currentPage==='leads') renderLeads();
   if (currentPage==='kanban') renderKanban();
-  if (currentPage==='reports') renderReports();
+  if (currentPage==='dashboard') renderDashboard();
   openLeadPanel(data.lead);
 }
 
@@ -2798,9 +2747,7 @@ async function markLeadLost(id) {
   if (!data || data.error) { showToast(data?.error||'Error','error'); return; }
   showToast('Lead marked as Lost','info');
   closePanel();
-  refreshDashboard();
   renderLeads();
-  if (currentPage==='reports') renderReports();
 }
 
 async function saveLeadEdit(id) {
@@ -2838,10 +2785,8 @@ async function saveLeadEdit(id) {
     return;
   }
   showToast('Lead updated ✓','success');
-  refreshDashboard();
   if (currentPage==='leads') renderLeads();
   if (currentPage==='kanban') renderKanban();
-  if (currentPage==='reports') renderReports();
   openLeadPanel(data.lead);
 }
 
@@ -2857,7 +2802,6 @@ async function scheduleServey(id) {
   if (!data) return;
   showToast('Survey scheduled!','success');
   closePanel();
-  refreshDashboard();
   if (currentPage==='leads') renderLeads();
   if (currentPage==='kanban') renderKanban();
 }
@@ -2907,9 +2851,8 @@ async function updateProjectStatus(id, status) {
   const data = await apiPut('/api/projects/'+id, { status });
   if (!data || !data.project) return;
   showToast('Project updated: '+status,'success');
-  refreshDashboard();
   if (currentPage==='projects') renderProjects();
-  if (currentPage==='reports') renderReports();
+  if (currentPage==='dashboard') renderDashboard();
   openProjectPanel(data.project);
 }
 
@@ -2956,7 +2899,6 @@ async function saveTicketResolution(id) {
   const data = await apiPut('/api/tickets/'+id, payload);
   if (!data) return;
   showToast('Ticket updated','success');
-  refreshDashboard();
   if (currentPage==='service') renderTickets();
   if (data.ticket) openTicketPanel(data.ticket);
 }
@@ -2966,9 +2908,8 @@ async function closeTicketById(id) {
   if (!data) return;
   showToast('Ticket closed','success');
   closePanel();
-  refreshDashboard();
   if (currentPage==='service') renderTickets();
-  if (currentPage==='reports') renderReports();
+  if (currentPage==='dashboard') renderDashboard();
 }
 
 // ---- CUSTOMER PANEL ----
@@ -3226,7 +3167,6 @@ async function createLead() {
   }
   closeModal();
   showToast('Lead created for '+name,'success');
-  refreshDashboard();
   navigate('leads');
 }
 
@@ -3263,7 +3203,6 @@ async function createTicket() {
   if (!data || data.error) { showToast(data?.error||'Error creating ticket','error'); return; }
   closeModal();
   showToast('Ticket created: '+data.ticket.id,'success');
-  refreshDashboard();
   navigate('service');
 }
 
@@ -3605,7 +3544,6 @@ async function runImport() {
   if (!data) return;
 
   showImportStep(3);
-  refreshDashboard();
   document.getElementById('import-result-icon').textContent = data.imported>0 ? '✅' : '⚠️';
   document.getElementById('import-result-title').textContent = data.imported+' leads imported successfully';
   document.getElementById('import-result-sub').textContent = data.skipped > 0 ? data.skipped+' rows skipped' : 'All rows imported!';
@@ -3735,53 +3673,4 @@ window.addEventListener('appinstalled', function() {
         <strong style="color:var(--text)">Preview:</strong> <span id="import-preview-text">—</span>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-                <button class="btn-outline" onclick="importGoBack()">← Back</button>
-        <button class="btn-primary" onclick="runImport()">✓ Import Leads</button>
-      </div>
-    </div>
-    <!-- Step 3: Result -->
-    <div id="import-step3" style="display:none;text-align:center;padding:20px 0">
-      <div id="import-result-icon" style="font-size:48px;margin-bottom:12px"></div>
-      <div id="import-result-title" style="font-size:18px;font-weight:700;margin-bottom:6px"></div>
-      <div id="import-result-sub" style="font-size:13px;color:var(--text-dim);margin-bottom:16px"></div>
-      <div id="import-result-details" style="margin-bottom:20px;text-align:left"></div>
-      <button class="btn-primary" onclick="closeImportModal()">Done</button>
-    </div>
-  </div>
-</div>
-
-<script>
-async function initPush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  try {
-    const keyRes = await apiGet('/api/push/vapid-public-key');
-    if (!keyRes || !keyRes.key || !keyRes.enabled) return;
-    const reg = await navigator.serviceWorker.register('/static/sw.js');
-    await navigator.serviceWorker.ready;
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return;
-    const existing = await reg.pushManager.getSubscription();
-    if (existing) { await apiPost('/api/push/subscribe', existing.toJSON()); return; }
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(keyRes.key)
-    });
-    await apiPost('/api/push/subscribe', sub.toJSON());
-    showToast('Notifications enabled ✓', 'success');
-  } catch(e) { console.log('Push setup failed:', e); }
-}
-function urlBase64ToUint8Array(b) {
-  const p = '='.repeat((4 - b.length % 4) % 4);
-  const d = window.atob((b + p).replace(/-/g,'+').replace(/_/g,'/'));
-  const o = new Uint8Array(d.length);
-  for (let i = 0; i < d.length; i++) o[i] = d.charCodeAt(i);
-  return o;
-}
-(function() {
-  var _o = window.showAppShell;
-  window.showAppShell = function() { _o.apply(this, arguments); setTimeout(initPush, 2000); };
-})();
-</script>
-
-</body>
-</html>
+        <button class="btn-outl
