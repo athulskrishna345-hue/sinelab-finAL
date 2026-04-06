@@ -362,24 +362,61 @@ def serve_upload(fname):
 @require_auth
 def dashboard():
     conn = get_db()
-    total_leads  = conn.execute("SELECT COUNT(*) FROM leads").fetchone()[0]
-    new_leads    = conn.execute("SELECT COUNT(*) FROM leads WHERE status='New Lead'").fetchone()[0]
-    confirmed    = conn.execute("SELECT COUNT(*) FROM leads WHERE status='Order Confirmed'").fetchone()[0]
-    active_proj  = conn.execute("SELECT COUNT(*) FROM projects WHERE status != 'Commissioned'").fetchone()[0]
-    open_tickets = conn.execute("SELECT COUNT(*) FROM tickets WHERE status IN ('Open','Assigned','In Progress')").fetchone()[0]
-    total_kw     = conn.execute("SELECT COALESCE(SUM(CAST(kw AS REAL)),0) FROM projects").fetchone()[0]
-    activity_list = rows(conn.execute("SELECT * FROM activity ORDER BY id DESC LIMIT 10").fetchall())
-    follow_ups   = rows(conn.execute(
+    def cnt(sql, *p): return conn.execute(sql, p).fetchone()[0]
+
+    stats = {
+        'leads_total':     cnt("SELECT COUNT(*) FROM leads"),
+        'leads_new':       cnt("SELECT COUNT(*) FROM leads WHERE status IN ('New Lead','Contacted')"),
+        'active_projects': cnt("SELECT COUNT(*) FROM projects WHERE status NOT IN ('Commissioned','Payment Completed')"),
+        'commissioned':    cnt("SELECT COUNT(*) FROM projects WHERE status IN ('Commissioned','Payment Completed')"),
+        'open_tickets':    cnt("SELECT COUNT(*) FROM tickets WHERE status NOT IN ('Resolved','Closed')"),
+        'high_tickets':    cnt("SELECT COUNT(*) FROM tickets WHERE priority='high' AND status NOT IN ('Resolved','Closed')"),
+        'customers':       cnt("SELECT COUNT(*) FROM customers"),
+    }
+
+    funnel = {
+        'total':       stats['leads_total'],
+        'qualified':   cnt("SELECT COUNT(*) FROM leads WHERE status IN ('Qualified','Site Survey Scheduled','Site Survey Completed','Quotation Under Preparation','Quotation Sent','Negotiation','Order Confirmed')"),
+        'surveyed':    cnt("SELECT COUNT(*) FROM leads WHERE status IN ('Site Survey Completed','Quotation Under Preparation','Quotation Sent','Negotiation','Order Confirmed')"),
+        'quoted':      cnt("SELECT COUNT(*) FROM leads WHERE status IN ('Quotation Sent','Negotiation','Order Confirmed')"),
+        'negotiation': cnt("SELECT COUNT(*) FROM leads WHERE status IN ('Negotiation','Order Confirmed')"),
+        'confirmed':   cnt("SELECT COUNT(*) FROM leads WHERE status='Order Confirmed'"),
+    }
+
+    sla = rows(conn.execute(
+        "SELECT id,name,location,type,status,telecaller FROM leads "
+        "WHERE status IN ('New Lead','Site Survey Completed','Quotation Under Preparation') "
+        "ORDER BY id DESC LIMIT 8"
+    ).fetchall())
+
+    activ = rows(conn.execute(
+        "SELECT action,user_name,created_at FROM activity ORDER BY id DESC LIMIT 10"
+    ).fetchall())
+
+    dept = {
+        'telecaller':     cnt("SELECT COUNT(*) FROM leads WHERE status IN ('New Lead','Contacted')"),
+        'sales_engineer': cnt("SELECT COUNT(*) FROM leads WHERE status='Site Survey Scheduled'"),
+        'design_team':    cnt("SELECT COUNT(*) FROM leads WHERE status IN ('Site Survey Completed','Quotation Under Preparation')"),
+        'operations':     cnt("SELECT COUNT(*) FROM projects WHERE status IN ('Handover to Operations','Material Planning','Installation Scheduled')"),
+        'documentation':  cnt("SELECT COUNT(*) FROM projects WHERE status='Net Metering in Process'"),
+        'service_team':   stats['open_tickets'],
+    }
+
+    follow_ups = rows(conn.execute(
         "SELECT id,name,phone,follow_up_date,follow_up_time,follow_up_note,telecaller,status "
         "FROM leads WHERE follow_up_date >= date('now') AND follow_up_date <= date('now','+3 days') "
-        "AND status NOT IN ('Order Confirmed','Lost / Dropped') ORDER BY follow_up_date,follow_up_time LIMIT 10"
+        "AND status NOT IN ('Order Confirmed','Lost / Dropped') "
+        "ORDER BY follow_up_date,follow_up_time LIMIT 10"
     ).fetchall())
+
     conn.close()
     return jsonify({
-        'total_leads': total_leads, 'new_leads': new_leads,
-        'confirmed': confirmed, 'active_projects': active_proj,
-        'open_tickets': open_tickets, 'total_kw': round(total_kw, 1),
-        'activity': activity_list, 'follow_ups': follow_ups
+        'stats':      stats,
+        'funnel':     funnel,
+        'sla_alerts': sla,
+        'activity':   activ,
+        'dept_tasks': dept,
+        'follow_ups': follow_ups,
     })
 
 @app.route('/api/projects', methods=['GET'])
