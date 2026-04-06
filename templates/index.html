@@ -1362,23 +1362,12 @@ body {
 .login-creds strong { color: var(--text-mid); }
 #app-shell { display: none; width: 100%; min-height: 100vh; }
 </style>
-
 <style>
-/* ===== REAL-TIME SYNC & REPORTS FIXES ===== */
 body { overflow-x: hidden !important; }
 .main { overflow-x: hidden !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
 .page-wrap { -webkit-overflow-scrolling: touch; touch-action: pan-y; }
 .kanban-wrap { -webkit-overflow-scrolling: touch; touch-action: pan-x; }
-@media (max-width: 900px) {
-  button, a, .tab, .nav-link, .k-card { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-  .f-input, .f-select, .pf-input, .pf-select, .f-textarea, .pf-textarea, select, input { font-size: 16px !important; }
-}
-@media (max-width: 600px) {
-  .main { overflow-y: scroll !important; }
-  .page-wrap { padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important; }
-}
-/* Reports Grid */
-.reports-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.reports-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap: 16px; }
 .report-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
 .report-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
 .report-sub { font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
@@ -1386,10 +1375,14 @@ body { overflow-x: hidden !important; }
 .report-rows { display: flex; flex-direction: column; gap: 10px; }
 .report-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-mid); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
 .report-row:last-child { border-bottom: none; padding-bottom: 0; }
-/* Live sync indicator */
-.sync-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--green); background: var(--green-bg); padding: 2px 8px; border-radius: 20px; }
-.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: syncPulse 2s infinite; }
-@keyframes syncPulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+@media (max-width: 900px) {
+  button, a, .tab, .nav-link, .k-card { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  input, select, textarea { font-size: 16px !important; }
+}
+@media (max-width: 600px) {
+  .main { overflow-y: scroll !important; }
+  .page-wrap { padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important; }
+}
 </style>
 </head>
 
@@ -2043,41 +2036,36 @@ function updateBadges() {
 //  DASHBOARD
 // ============================================================
 
-// ── Live Dashboard Badge Sync ──────────────────────────────
-// Called after every data change to keep badges/counts in sync
-async function refreshDashboardBadges() {
+// ── Live Dashboard Sync ──────────────────────────────────────
+async function refreshDashboard() {
+  // Always refresh sidebar badges
   try {
-    const data = await apiGet('/api/dashboard');
-    if (!data) return;
-    const s = data.stats || {};
-    // Sidebar badges
-    var nbLeads = document.getElementById('nb-leads');
-    var nbProjects = document.getElementById('nb-projects');
-    var nbService = document.getElementById('nb-service');
+    const d = await apiGet('/api/dashboard');
+    if (!d || !d.stats) return;
+    var el;
+    el = document.getElementById('nb-leads');    if(el) el.textContent = d.stats.leads_total || 0;
+    el = document.getElementById('nb-projects'); if(el) el.textContent = d.stats.active_projects || 0;
+    el = document.getElementById('nb-service');  if(el) el.textContent = d.stats.open_tickets || 0;
     var dot = document.getElementById('notif-dot');
-    if (nbLeads)    nbLeads.textContent    = (s.leads_total || 0);
-    if (nbProjects) nbProjects.textContent = (s.active_projects || 0);
-    if (nbService)  nbService.textContent  = (s.open_tickets || 0);
-    if (dot) {
-      if ((s.high_tickets || 0) > 0) dot.classList.add('show');
-      else dot.classList.remove('show');
-    }
-    // If dashboard page is visible, fully re-render it
+    if (dot) { if((d.stats.high_tickets||0)>0) dot.classList.add('show'); else dot.classList.remove('show'); }
+    // If on dashboard, do full re-render
     if (currentPage === 'dashboard') renderDashboard();
-  } catch(e) { /* silent fail */ }
+  } catch(e) {}
 }
 
-// ── Auto-refresh every 30 seconds when on dashboard ────────
+// Auto-refresh every 30 seconds
 setInterval(function() {
   if (currentPage === 'dashboard') renderDashboard();
-  else refreshDashboardBadges();
+  else refreshDashboard();
 }, 30000);
 
 async function renderDashboard() {
   const data = await apiGet('/api/dashboard');
-  if (!data) return;
-  const s = data.stats;
-  const f = data.funnel;
+  if (!data) { console.error('Dashboard API failed'); return; }
+
+  // data.stats contains all counters, data.funnel contains pipeline
+  const s = data.stats || {};
+  const f = data.funnel || {};
 
   document.getElementById('dash-stats').innerHTML =
     '<div class="stat-card"><div class="stat-accent" style="background:var(--blue)"></div><div class="stat-icon">◈</div><div class="stat-label">Total Leads</div><div class="stat-value" style="color:var(--blue)">'+s.leads_total+'</div><div class="stat-delta" style="color:var(--blue)">'+s.leads_new+' new / uncontacted</div></div>' +
@@ -2103,7 +2091,7 @@ async function renderDashboard() {
     return '<div class="activity-item"><div class="act-dot" style="background:var(--sun)"></div><div><div class="act-text">'+h(a.action)+'</div><div class="act-time">'+h(a.user_name)+' · '+fmtTime(a.created_at)+'</div></div></div>';
   }).join('');
 
-  const dt = data.dept_tasks;
+  const dt = data.dept_tasks || {};
   const depts = [
     { dept:'Telecaller',     n:dt.telecaller,     label:'leads to contact' },
     { dept:'Sales Engineer', n:dt.sales_engineer, label:'surveys scheduled' },
@@ -2509,13 +2497,10 @@ async function renderCustomers() {
 //  REPORTS
 // ============================================================
 async function renderReports() {
-  const el = document.getElementById('reports-grid');
-  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)">Loading reports...</div>';
+  var rg = document.getElementById('reports-grid');
+  if(rg) rg.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-dim)">⏳ Loading reports...</div>';
   const data = await apiGet('/api/reports');
-  if (!data) {
-    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">⚠️ Could not load reports. Check connection.</div>';
-    return;
-  }
+  if (!data) { if(rg) rg.innerHTML='<div style="text-align:center;padding:40px;color:var(--red)">⚠️ Could not load reports.</div>'; return; }
 
   const n = data.total_leads || 1;
   const cr = n > 0 ? Math.round(data.confirmed/n*100) : 0;
@@ -2714,9 +2699,10 @@ async function updateLeadStatus(id, status) {
   const data = await apiPut('/api/leads/'+id, { status });
   if (!data || !data.lead) return;
   showToast('Status updated: '+status, 'success');
+  refreshDashboard();
   if (currentPage==='leads') renderLeads();
   if (currentPage==='kanban') renderKanban();
-  if (currentPage==='dashboard') renderDashboard();
+  if (currentPage==='reports') renderReports();
   openLeadPanel(data.lead);
 }
 
@@ -2812,9 +2798,8 @@ async function markLeadLost(id) {
   if (!data || data.error) { showToast(data?.error||'Error','error'); return; }
   showToast('Lead marked as Lost','info');
   closePanel();
-  refreshDashboardBadges();
+  refreshDashboard();
   renderLeads();
-  if (currentPage==='dashboard') renderDashboard();
   if (currentPage==='reports') renderReports();
 }
 
@@ -2853,10 +2838,9 @@ async function saveLeadEdit(id) {
     return;
   }
   showToast('Lead updated ✓','success');
-  refreshDashboardBadges();
+  refreshDashboard();
   if (currentPage==='leads') renderLeads();
   if (currentPage==='kanban') renderKanban();
-  if (currentPage==='dashboard') renderDashboard();
   if (currentPage==='reports') renderReports();
   openLeadPanel(data.lead);
 }
@@ -2873,10 +2857,9 @@ async function scheduleServey(id) {
   if (!data) return;
   showToast('Survey scheduled!','success');
   closePanel();
-  refreshDashboardBadges();
+  refreshDashboard();
   if (currentPage==='leads') renderLeads();
   if (currentPage==='kanban') renderKanban();
-  if (currentPage==='dashboard') renderDashboard();
 }
 
 // ---- PROJECT PANEL ----
@@ -2924,9 +2907,8 @@ async function updateProjectStatus(id, status) {
   const data = await apiPut('/api/projects/'+id, { status });
   if (!data || !data.project) return;
   showToast('Project updated: '+status,'success');
-  refreshDashboardBadges();
+  refreshDashboard();
   if (currentPage==='projects') renderProjects();
-  if (currentPage==='dashboard') renderDashboard();
   if (currentPage==='reports') renderReports();
   openProjectPanel(data.project);
 }
@@ -2974,9 +2956,8 @@ async function saveTicketResolution(id) {
   const data = await apiPut('/api/tickets/'+id, payload);
   if (!data) return;
   showToast('Ticket updated','success');
-  refreshDashboardBadges();
+  refreshDashboard();
   if (currentPage==='service') renderTickets();
-  if (currentPage==='dashboard') renderDashboard();
   if (data.ticket) openTicketPanel(data.ticket);
 }
 
@@ -2985,9 +2966,8 @@ async function closeTicketById(id) {
   if (!data) return;
   showToast('Ticket closed','success');
   closePanel();
-  refreshDashboardBadges();
+  refreshDashboard();
   if (currentPage==='service') renderTickets();
-  if (currentPage==='dashboard') renderDashboard();
   if (currentPage==='reports') renderReports();
 }
 
@@ -3246,7 +3226,7 @@ async function createLead() {
   }
   closeModal();
   showToast('Lead created for '+name,'success');
-  refreshDashboardBadges();
+  refreshDashboard();
   navigate('leads');
 }
 
@@ -3283,7 +3263,7 @@ async function createTicket() {
   if (!data || data.error) { showToast(data?.error||'Error creating ticket','error'); return; }
   closeModal();
   showToast('Ticket created: '+data.ticket.id,'success');
-  refreshDashboardBadges();
+  refreshDashboard();
   navigate('service');
 }
 
@@ -3625,7 +3605,7 @@ async function runImport() {
   if (!data) return;
 
   showImportStep(3);
-  refreshDashboardBadges();
+  refreshDashboard();
   document.getElementById('import-result-icon').textContent = data.imported>0 ? '✅' : '⚠️';
   document.getElementById('import-result-title').textContent = data.imported+' leads imported successfully';
   document.getElementById('import-result-sub').textContent = data.skipped > 0 ? data.skipped+' rows skipped' : 'All rows imported!';
