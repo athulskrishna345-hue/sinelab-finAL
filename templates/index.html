@@ -59,7 +59,7 @@ body {
   color: var(--text);
   display: flex;
   min-height: 100vh;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* ---- SCROLLBAR ---- */
@@ -258,7 +258,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* ===========================
@@ -1327,6 +1327,101 @@ body {
 #import-box { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(0.96); z-index: 800; opacity: 0; transition: all 0.2s ease; pointer-events: none; }
 #import-box.show { opacity: 1; transform: translate(-50%,-50%) scale(1); pointer-events: all; }
 
+
+/* ===== MOBILE SCROLL & TOUCH FIXES ===== */
+html, body {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+body {
+  overflow-y: auto !important;
+}
+#app-shell {
+  display: none;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+.main {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-height: 0;
+}
+.page-wrap {
+  overflow-x: hidden;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+/* Fix touch targets - minimum 44px */
+@media (max-width: 900px) {
+  .nav-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .btn-primary, .btn-outline, .btn-sm {
+    min-height: 40px;
+  }
+  .mobile-bottom-nav a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .tab {
+    min-height: 40px;
+    touch-action: manipulation;
+  }
+  select, input, textarea {
+    font-size: 16px !important; /* prevents iOS zoom */
+    touch-action: manipulation;
+  }
+}
+/* Kanban horizontal scroll */
+.kanban-wrap {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+/* Table horizontal scroll */
+.table-wrap {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overflow-x: auto;
+}
+/* Detail panel scroll */
+.detail-panel {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+/* Remove any pointer-events none on mobile overlay issues */
+@media (max-width: 600px) {
+  .main {
+    overflow-y: scroll !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .page-wrap {
+    min-height: calc(100dvh - 52px - 56px);
+    padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+  }
+  /* Prevent double-tap zoom on buttons */
+  button, a, .nav-link, .tab, .k-card {
+    touch-action: manipulation;
+  }
+  /* Fix kanban touch */
+  .kanban-wrap {
+    touch-action: pan-x;
+    cursor: grab;
+  }
+  /* Fix k-cards inner scroll */
+  .k-cards {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overflow-y: auto;
+  }
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
