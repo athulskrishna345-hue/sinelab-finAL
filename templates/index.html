@@ -1327,101 +1327,6 @@ body {
 #import-box { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(0.96); z-index: 800; opacity: 0; transition: all 0.2s ease; pointer-events: none; }
 #import-box.show { opacity: 1; transform: translate(-50%,-50%) scale(1); pointer-events: all; }
 
-
-/* ===== MOBILE SCROLL & TOUCH FIXES ===== */
-html, body {
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-}
-body {
-  overflow-y: auto !important;
-}
-#app-shell {
-  display: none;
-  width: 100%;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-.main {
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch;
-  flex: 1;
-  min-height: 0;
-}
-.page-wrap {
-  overflow-x: hidden;
-  overflow-y: visible;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-}
-/* Fix touch targets - minimum 44px */
-@media (max-width: 900px) {
-  .nav-link {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-  }
-  .btn-primary, .btn-outline, .btn-sm {
-    min-height: 40px;
-  }
-  .mobile-bottom-nav a {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  .tab {
-    min-height: 40px;
-    touch-action: manipulation;
-  }
-  select, input, textarea {
-    font-size: 16px !important; /* prevents iOS zoom */
-    touch-action: manipulation;
-  }
-}
-/* Kanban horizontal scroll */
-.kanban-wrap {
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
-  overflow-x: auto;
-  overflow-y: visible;
-}
-/* Table horizontal scroll */
-.table-wrap {
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x pan-y;
-  overflow-x: auto;
-}
-/* Detail panel scroll */
-.detail-panel {
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-}
-/* Remove any pointer-events none on mobile overlay issues */
-@media (max-width: 600px) {
-  .main {
-    overflow-y: scroll !important;
-    -webkit-overflow-scrolling: touch;
-  }
-  .page-wrap {
-    min-height: calc(100dvh - 52px - 56px);
-    padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
-  }
-  /* Prevent double-tap zoom on buttons */
-  button, a, .nav-link, .tab, .k-card {
-    touch-action: manipulation;
-  }
-  /* Fix kanban touch */
-  .kanban-wrap {
-    touch-action: pan-x;
-    cursor: grab;
-  }
-  /* Fix k-cards inner scroll */
-  .k-cards {
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
-    overflow-y: auto;
-  }
-}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
@@ -1456,6 +1361,44 @@ body {
 .login-creds { margin-top: 20px; padding: 12px 14px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); font-size: 11px; color: var(--text-dim); line-height: 1.8; }
 .login-creds strong { color: var(--text-mid); }
 #app-shell { display: none; width: 100%; min-height: 100vh; }
+</style>
+
+<style>
+/* ===== SCROLL & TOUCH FIXES ===== */
+body { overflow-x: hidden !important; }
+.main { overflow-x: hidden !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+.page-wrap { -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+.kanban-wrap { -webkit-overflow-scrolling: touch; touch-action: pan-x; }
+.table-wrap { -webkit-overflow-scrolling: touch; }
+.detail-panel { -webkit-overflow-scrolling: touch; }
+@media (max-width: 900px) {
+  button, a, .tab, .nav-link, .k-card { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .f-input, .f-select, .pf-input, .pf-select, .f-textarea, .pf-textarea, select, input { font-size: 16px !important; }
+  .mobile-bottom-nav a { min-height: 48px; }
+}
+@media (max-width: 600px) {
+  .main { overflow-y: scroll !important; }
+  .page-wrap { padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important; }
+}
+/* ===== REPORTS GRID FIX ===== */
+.reports-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 0;
+}
+.report-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+.report-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.report-sub { font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
+.report-metric { font-size: 36px; font-weight: 700; }
+.report-rows { display: flex; flex-direction: column; gap: 10px; }
+.report-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-mid); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.report-row:last-child { border-bottom: none; padding-bottom: 0; }
 </style>
 </head>
 
@@ -2111,8 +2054,32 @@ function updateBadges() {
 async function renderDashboard() {
   const data = await apiGet('/api/dashboard');
   if (!data) return;
-  const s = data.stats;
-  const f = data.funnel;
+  // Support both old API format (data.stats) and new flat format
+  const s = data.stats || {
+    leads_total:     data.total_leads    || 0,
+    leads_new:       data.new_leads      || 0,
+    active_projects: data.active_projects|| 0,
+    commissioned:    data.confirmed      || 0,
+    customers:       data.total_leads    || 0,
+    open_tickets:    data.open_tickets   || 0,
+    high_tickets:    0,
+  };
+  const f = data.funnel || {
+    total:       data.total_leads    || 0,
+    qualified:   0,
+    surveyed:    0,
+    quoted:      0,
+    negotiation: 0,
+    confirmed:   data.confirmed      || 0,
+  };
+  const dept_tasks = data.dept_tasks || {
+    telecaller:    0,
+    sales_engineer:0,
+    design_team:   0,
+    operations:    0,
+    documentation: 0,
+    service_team:  data.open_tickets || 0,
+  };
 
   document.getElementById('dash-stats').innerHTML =
     '<div class="stat-card"><div class="stat-accent" style="background:var(--blue)"></div><div class="stat-icon">◈</div><div class="stat-label">Total Leads</div><div class="stat-value" style="color:var(--blue)">'+s.leads_total+'</div><div class="stat-delta" style="color:var(--blue)">'+s.leads_new+' new / uncontacted</div></div>' +
@@ -2138,7 +2105,7 @@ async function renderDashboard() {
     return '<div class="activity-item"><div class="act-dot" style="background:var(--sun)"></div><div><div class="act-text">'+h(a.action)+'</div><div class="act-time">'+h(a.user_name)+' · '+fmtTime(a.created_at)+'</div></div></div>';
   }).join('');
 
-  const dt = data.dept_tasks;
+  const dt = dept_tasks || data.dept_tasks || {};
   const depts = [
     { dept:'Telecaller',     n:dt.telecaller,     label:'leads to contact' },
     { dept:'Sales Engineer', n:dt.sales_engineer, label:'surveys scheduled' },
@@ -2545,7 +2512,14 @@ async function renderCustomers() {
 // ============================================================
 async function renderReports() {
   const data = await apiGet('/api/reports');
-  if (!data) return;
+  if (!data) {
+    document.getElementById('reports-grid').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)">⚠️ Could not load reports. Check your connection.</div>';
+    return;
+  }
+  if (!data.total_leads && !data.by_source) {
+    document.getElementById('reports-grid').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)">No data available yet. Add some leads first!</div>';
+    return;
+  }
 
   const n = data.total_leads || 1;
   const cr = n > 0 ? Math.round(data.confirmed/n*100) : 0;
@@ -2680,7 +2654,7 @@ function openLeadPanel(l) {
         '<div style="display:flex;align-items:center;gap:8px"><span>📄</span><span style="font-size:13px;font-weight:600">KSEB Bill</span>'+
         (l.kseb_bill_file ? '<span style="font-size:11px;color:var(--green)">✓ Uploaded</span>' : '<span style="font-size:11px;color:var(--text-dim)">Not attached</span>')+'</div>'+
         '<div style="display:flex;gap:6px">'+
-          (l.kseb_bill_file ? '<a href="/api/files/'+h(l.kseb_bill_file)+'" target="_blank" class="btn-sm ghost" onclick="event.stopPropagation()">👁 View</a>' : '')+
+          (l.kseb_bill_file ? '<a href="/api/uploads/'+h(l.kseb_bill_file)+'" target="_blank" class="btn-sm ghost" onclick="event.stopPropagation()">👁 View</a>' : '')+
           '<button class="btn-sm ghost" style="color:var(--sun)" onclick="event.stopPropagation();attachFileToLead('+l.id+',\'kseb_bill\')">'+(l.kseb_bill_file?'🔄 Replace':'📎 Attach')+'</button>'+
         '</div>'+
       '</div>'+
@@ -2688,7 +2662,7 @@ function openLeadPanel(l) {
         '<div style="display:flex;align-items:center;gap:8px"><span>📋</span><span style="font-size:13px;font-weight:600">Quotation</span>'+
         (l.quotation_file ? '<span style="font-size:11px;color:var(--green)">✓ Uploaded</span>' : '<span style="font-size:11px;color:var(--text-dim)">Not attached</span>')+'</div>'+
         '<div style="display:flex;gap:6px">'+
-          (l.quotation_file ? '<a href="/api/files/'+h(l.quotation_file)+'" target="_blank" class="btn-sm ghost" onclick="event.stopPropagation()">👁 View</a>' : '')+
+          (l.quotation_file ? '<a href="/api/uploads/'+h(l.quotation_file)+'" target="_blank" class="btn-sm ghost" onclick="event.stopPropagation()">👁 View</a>' : '')+
           '<button class="btn-sm ghost" style="color:var(--sun)" onclick="event.stopPropagation();attachFileToLead('+l.id+',\'quotation\')">'+(l.quotation_file?'🔄 Replace':'📎 Attach')+'</button>'+
         '</div>'+
       '</div>'+
@@ -2697,8 +2671,8 @@ function openLeadPanel(l) {
         var photos = [];
         try { photos = JSON.parse(l.site_photos||'[]'); } catch(e){}
         var thumbs = photos.map(function(p,i){
-          return '<a href="/api/files/'+h(p)+'" target="_blank" onclick="event.stopPropagation()" title="Photo '+(i+1)+'">'+
-            '<img src="/api/files/'+h(p)+'" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border2)" onerror="this.style.display=\'none\'">'+
+          return '<a href="/api/uploads/'+h(p)+'" target="_blank" onclick="event.stopPropagation()" title="Photo '+(i+1)+'">'+
+            '<img src="/api/uploads/'+h(p)+'" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border2)" onerror="this.style.display=\'none\'">'+
           '</a>';
         }).join('');
         return '<div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">'+
@@ -3818,4 +3792,3 @@ function urlBase64ToUint8Array(b) {
 
 </body>
 </html>
-
