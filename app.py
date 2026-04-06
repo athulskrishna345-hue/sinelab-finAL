@@ -354,8 +354,22 @@ def upload_site_photo(lid):
     return jsonify({'photos': photos})
 
 @app.route('/api/uploads/<path:fname>')
-@require_auth
 def serve_upload(fname):
+    # Accept token from header (XHR) OR from query param (browser tab / new window)
+    token = request.headers.get('X-Token') or request.args.get('token') or ''
+    if token:
+        conn = get_db()
+        row = conn.execute(
+            "SELECT s.user_id FROM sessions s WHERE s.token=? AND s.expires_at>datetime('now')",
+            (token,)).fetchone()
+        conn.close()
+        if not row:
+            return jsonify({'error': 'Unauthorized'}), 401
+    else:
+        return jsonify({'error': 'Unauthorized'}), 401
+    # Security: prevent path traversal
+    import posixpath
+    fname = posixpath.normpath(fname).lstrip('/')
     return send_from_directory(UPLOAD_DIR, fname)
 
 @app.route('/api/dashboard')
